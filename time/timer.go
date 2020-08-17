@@ -128,3 +128,17 @@ func (mgr *TimerMgr) Repeat(d time.Duration, f func(t *Timer, now time.Time), ev
 	mgr.addTimer(t)
 	return t
 }
+
+// 循环任务
+func StartLoopTask(t time.Duration, f func()) *time.Ticker {
+	timeTicker := time.NewTicker(t)
+	go func() {
+		for {
+			select {
+			case <-timeTicker.C:
+				f()
+			}
+		}
+	}()
+	return timeTicker
+}

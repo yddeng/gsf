@@ -11,7 +11,7 @@ func TestNow(t *testing.T) {
 	n1 := Now()
 	fmt.Println(nn1.String(), n1.String(), nn1.Sub(n1).String())
 
-	t1, err := ParseTime("2020-8-14 10:40:00")
+	t1, err := ParseTime("2020-08-14 10:40:00")
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -25,7 +25,7 @@ func TestNow(t *testing.T) {
 }
 
 func TestCalcLatestTimeAfter(t *testing.T) {
-	t1, err := ParseTime("2020-8-13 10:40:00")
+	t1, err := ParseTime("2020-08-13 10:40:00")
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -41,7 +41,7 @@ func TestCalcLatestTimeAfter(t *testing.T) {
 }
 
 func TestCalcLatestWeekTimeAfter(t *testing.T) {
-	t1, err := ParseTime("2020-8-13 10:40:00")
+	t1, err := ParseTime("2020-08-13 10:40:00")
 	if err != nil {
 		fmt.Println(err)
 		return

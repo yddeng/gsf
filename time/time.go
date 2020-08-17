@@ -47,6 +47,8 @@ func ParseTime(s string) (time.Time, error) {
 		return time.Time{}, errors.New("invalid time format")
 	}
 	return time.Date(year, time.Month(month), day, hour, minute, sec, 0, time.Local), nil
+
+	//time.Parse("2006-01-02 15:04:05", str)
 }
 
 func getBaseTime(bases ...time.Time) time.Time {
