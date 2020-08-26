@@ -1,0 +1,4 @@
+syntax = "proto3";
+option go_package = "gsf/protocol/ss/ss";
+
+message echo {}

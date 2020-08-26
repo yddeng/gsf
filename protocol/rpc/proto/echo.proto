@@ -1,0 +1,6 @@
+syntax = "proto3";
+option go_package = "gsf/protocol/rpc/rpc";
+
+message echoReq {}
+
+message echoResp {}

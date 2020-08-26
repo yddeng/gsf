@@ -1,0 +1,6 @@
+syntax = "proto3";
+option go_package = "gsf/protocol/cs/cs";
+
+message heartbeatToS {}
+
+message heartbeatToC {}

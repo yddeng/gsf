@@ -1,0 +1,32 @@
+syntax = "proto3";
+option go_package = "gsf/protocol/center/center";
+
+message nodeInfo {
+	uint32 logicAddr     = 1;
+	string netAddr       = 2;
+}
+
+message loginReq {
+	nodeInfo node = 1;
+}
+
+message loginResp {
+	int32  errCode = 1;
+	string msg     = 2;
+}
+
+message heartbeat {
+	int64  timestamp = 1; // s
+}
+
+message notifyNodeInfo {
+	repeated nodeInfo nodes = 1;
+}
+
+message nodeLeave {
+	repeated uint32 nodes = 1;
+}
+
+message nodeChange {
+	repeated nodeInfo nodes = 1;
+}
