@@ -1,4 +1,4 @@
-package codec
+package ss
 
 import (
 	"fmt"
@@ -126,6 +126,7 @@ func (decoder *Codec) unPack() (interface{}, error) {
 		}
 		msg = &rpc.Request{
 			SeqNo:    decoder.seqNo,
+			Method:   pb.GetNameById(decoder.req, decoder.cmd),
 			Data:     m,
 			NeedResp: true,
 		}

@@ -1,9 +1,7 @@
-package codec
+package cs
 
 import (
 	"github.com/golang/protobuf/proto"
-	"reflect"
-	"teacher/codec/pb"
 )
 
 type Message struct {
@@ -34,9 +32,5 @@ func (this *Message) GetErrCode() uint16 {
 }
 
 func (this *Message) GetCmd() uint16 {
-	if this.data != nil {
-		name := reflect.TypeOf(this.data).String()
-		return uint16(pb.GetCmdByName(name))
-	}
 	return this.cmd
 }

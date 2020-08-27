@@ -1,4 +1,4 @@
-package codec
+package ss
 
 import (
 	"github.com/golang/protobuf/proto"

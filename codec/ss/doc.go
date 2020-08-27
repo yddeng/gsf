@@ -1,4 +1,4 @@
-package codec
+package ss
 
 /*
  ss 消息编解码器

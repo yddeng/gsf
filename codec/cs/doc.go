@@ -1,4 +1,4 @@
-package codec
+package cs
 
 /*
  cs 消息编解码器
