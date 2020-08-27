@@ -25,14 +25,15 @@ type Client struct {
 /*
  异步请求
 */
-func (client *Client) AsynCall(channel RPCChannel, msg interface{}, callback func(interface{}, error)) error {
+func (client *Client) AsynCall(channel RPCChannel, method string, data interface{}, callback func(interface{}, error)) error {
 	if callback == nil {
 		return errors.New("callback == nil")
 	}
 
 	req := &Request{
 		SeqNo:    atomic.AddUint64(&client.reqNo, 1),
-		Data:     msg,
+		Method:   method,
+		Data:     data,
 		NeedResp: true,
 	}
 
@@ -76,9 +77,10 @@ func (client *Client) AsynCall(channel RPCChannel, msg interface{}, callback fun
 //}
 
 //只管将消息发送出去,
-func (client *Client) Post(channel RPCChannel, msg interface{}) error {
+func (client *Client) Post(channel RPCChannel, method string, msg interface{}) error {
 	req := &Request{
 		SeqNo:    atomic.AddUint64(&client.reqNo, 1),
+		Method:   method,
 		Data:     msg,
 		NeedResp: false,
 	}

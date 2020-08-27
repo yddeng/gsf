@@ -2,94 +2,88 @@ package rpc
 
 import (
 	"fmt"
-	"reflect"
+	"runtime"
 	"sync"
 	"sync/atomic"
 )
 
 type Server struct {
-	methods   sync.Map //map[reflect.Type]*methodInfo
+	methods   map[string]MethodHandler
 	lastReqNo uint64
+	*sync.RWMutex
 }
 
-type methodInfo struct {
-	method   reflect.Value
-	argType  reflect.Type
-	respType reflect.Type
-	needResp bool
-}
+type MethodHandler func(replyer *Replyer, req interface{})
 
-func (server *Server) Register(method interface{}) error {
-	mValue := reflect.ValueOf(method)
-	if mValue.Kind() != reflect.Func {
-		return fmt.Errorf("register rpc method is fail,need func(req pointer) or func(req pointer,resp pointer)")
+func (server *Server) Register(name string, h MethodHandler) error {
+	if name == "" {
+		panic("name == ''")
+	}
+	if nil == h {
+		panic("h == nil")
 	}
 
-	mType := reflect.TypeOf(method)
-
-	if mType.NumIn() < 1 || mType.NumIn() > 2 {
-		return fmt.Errorf("register rpc method is fail,need func(req pointer) or func(req pointer,resp pointer)")
-	}
-
-	info := &methodInfo{
-		method:  mValue,
-		argType: mType.In(0),
-	}
-
-	info.needResp = mType.NumIn() == 2
-	if info.needResp {
-		info.respType = mType.In(1)
-	}
-
-	argType := mType.In(0)
-	_, ok := server.methods.Load(argType)
+	server.Lock()
+	defer server.Unlock()
+	_, ok := server.methods[name]
 	if ok {
-		return fmt.Errorf("duplicate method:%s", argType)
+		return fmt.Errorf("duplicate method:%s", name)
 	}
-	server.methods.Store(argType, info)
+	server.methods[name] = h
 	return nil
 }
 
-func (server *Server) checkMethod(name reflect.Type, needResp bool) (*methodInfo, error) {
-	method, ok := server.methods.Load(name)
-	if !ok {
-		return nil, fmt.Errorf("not register method:%s", name.String())
-	}
-
-	m := method.(*methodInfo)
-	if m.needResp != needResp {
-		return nil, fmt.Errorf("invaild method:%s,register needResp=%v but request needResp=%v",
-			name.String(), m.needResp, needResp)
-	}
-	return m, nil
-}
-
 func (server *Server) OnRPCRequest(channel RPCChannel, req *Request) error {
-	// 重复请求
-	if !atomic.CompareAndSwapUint64(&server.lastReqNo, req.SeqNo-1, req.SeqNo) {
-		return fmt.Errorf("repeated reqNo:%d", req.SeqNo)
-	}
+	var err error
+	replyer := &Replyer{channel: channel, req: req}
 
-	name := reflect.TypeOf(req.Data)
-	method, err := server.checkMethod(name, req.NeedResp)
-	if err != nil {
-		if req.NeedResp {
-			_ = channel.SendResponse(&Response{SeqNo: req.SeqNo, Err: err})
-		}
+	server.RLock()
+	defer server.RUnlock()
+	method, ok := server.methods[req.Method]
+	if !ok {
+		err = fmt.Errorf("invaild method:%s", req.Method)
+		_ = replyer.reply(&Response{SeqNo: req.SeqNo, Err: err})
+		return err
+	}
+	// 重复请求
+	if req.SeqNo <= server.lastReqNo {
+		err = fmt.Errorf("repeated reqNo:%d", req.SeqNo)
+		_ = replyer.reply(&Response{SeqNo: req.SeqNo, Err: err})
 		return err
 	}
 
-	var resp *Response
-	arg := reflect.ValueOf(req.Data)
-	if method.needResp {
-		elem := reflect.New(method.respType.Elem())
-		method.method.Call([]reflect.Value{arg, elem})
-		resp = &Response{SeqNo: req.SeqNo, Data: elem.Interface()}
-	} else {
-		method.method.Call([]reflect.Value{arg})
+	return server.callMethod(method, replyer)
+}
+
+func (server *Server) callMethod(method MethodHandler, replyer *Replyer) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			buf := make([]byte, 65535)
+			l := runtime.Stack(buf, false)
+			err = fmt.Errorf(fmt.Sprintf("%v: %s", r, buf[:l]))
+		}
+	}()
+
+	method(replyer, replyer.req.Data)
+	return nil
+}
+
+type Replyer struct {
+	channel RPCChannel
+	fired   int32 //防止重复Reply
+	req     *Request
+}
+
+func (r *Replyer) Reply(ret interface{}, err error) error {
+	if r.req.NeedResp && atomic.CompareAndSwapInt32(&r.fired, 0, 1) {
+		return fmt.Errorf("reply failde, needResp %v , fired %d", r.req.NeedResp, atomic.LoadInt32(&r.fired))
 	}
 
-	return channel.SendResponse(resp)
+	return r.reply(&Response{SeqNo: r.req.SeqNo, Data: ret, Err: err})
+}
+
+func (r *Replyer) reply(resp *Response) error {
+	return r.channel.SendResponse(resp)
 }
 
 func NewServer() *Server {
