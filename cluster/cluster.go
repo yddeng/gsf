@@ -24,7 +24,7 @@ func onClose(session net.Session, reason string) {
 }
 
 func Launcher(centerAddr string, self *addr.Addr) error {
-	l, err := net.NewTCPListener("tcp", self.Net.String())
+	l, err := net.NewTCPListener("tcp", self.NetString())
 	if err != nil {
 		return err
 	}

@@ -27,6 +27,10 @@ type Addr struct {
 	Net   *net.TCPAddr
 }
 
+func (this *Addr) NetString() string {
+	return this.Net.String()
+}
+
 func MakeAddr(logic string, tcpAddr string) (*Addr, error) {
 	logicAddr, err := MakeLogicAddr(logic)
 	if nil != err {

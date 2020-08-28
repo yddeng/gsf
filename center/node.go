@@ -87,26 +87,6 @@ func onLogin(replyer *rpc.Replyer, arg interface{}) {
 		util.Logger().Infof("add node %d \n", n.LogicAddr.Logic)
 		_ = replyer.Reply(resp, nil)
 
-		notify := &protocol.NotifyNodeInfo{
-			Nodes: []*protocol.NodeInfo{{
-				LogicAddr: logic,
-				NetAddr:   netAddr.String(),
-			}},
-		}
-		// 通知所有节点，新节点上线,除了自己
-		broadcast(notify, n.LogicAddr.Logic)
-
-		for _, node := range nodes {
-			if node.LogicAddr.Logic != n.LogicAddr.Logic {
-				notify.Nodes = append(notify.Nodes, &protocol.NodeInfo{
-					LogicAddr: uint32(node.LogicAddr.Logic),
-					NetAddr:   node.LogicAddr.Net.String(),
-				})
-			}
-		}
-		// 通知自己，有哪些节点在线
-		_ = n.Send(ss.NewMessage(notify))
-
 	} else {
 		if n.session != nil {
 			resp.Msg = "session is already connect"
@@ -115,23 +95,34 @@ func onLogin(replyer *rpc.Replyer, arg interface{}) {
 			return
 		}
 		n.session = session
+		n.LogicAddr.Net = netAddr
 		session.SetContext(n)
 
-		util.Logger().Infof("reLogin node %d \n", n.LogicAddr.Logic)
+		util.Logger().Infof("reconnect node %d \n", n.LogicAddr.Logic)
 		resp.Ok = true
 		_ = replyer.Reply(resp, nil)
 
-		// 换了新地址
-		if n.LogicAddr.Net.String() != netAddr.String() {
-			change := &protocol.NodeChange{Nodes: []*protocol.NodeInfo{
-				{
-					LogicAddr: logic,
-					NetAddr:   netAddr.String(),
-				},
-			}}
-			broadcast(change)
+	}
+
+	notify := &protocol.NotifyNodeInfo{
+		Nodes: []*protocol.NodeInfo{{
+			LogicAddr: logic,
+			NetAddr:   netAddr.String(),
+		}},
+	}
+	// 通知所有节点，新节点上线,除了自己
+	broadcast(notify, n.LogicAddr.Logic)
+
+	for _, node := range nodes {
+		if node.LogicAddr.Logic != n.LogicAddr.Logic {
+			notify.Nodes = append(notify.Nodes, &protocol.NodeInfo{
+				LogicAddr: uint32(node.LogicAddr.Logic),
+				NetAddr:   node.LogicAddr.NetString(),
+			})
 		}
 	}
+	// 通知自己，有哪些节点在线,包括自己
+	_ = n.Send(ss.NewMessage(notify))
 }
 
 func onHeartbeat(session net.Session, msg *ss.Message) {}
