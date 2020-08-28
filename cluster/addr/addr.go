@@ -10,14 +10,14 @@ import (
 const (
 	GroupMask  uint32 = 0xFFFC0000 //高14 (1,16383)
 	TypeMask   uint32 = 0x0003FC00 //中8 (1,254)
-	ServerMask uint32 = 0x000003FF //低10 (0,1023)
+	ServerMask uint32 = 0x000003FF //低10 (1,1023)
 )
 
 var (
 	ErrInvaildAddrFmt = fmt.Errorf("invaild addr format")
 	ErrInvaildGroup   = fmt.Errorf("group should between(1,16383)")
 	ErrInvaildType    = fmt.Errorf("type should between(1,254)")
-	ErrInvaildServer  = fmt.Errorf("server should between(0,1023)")
+	ErrInvaildServer  = fmt.Errorf("server should between(1,1023)")
 )
 
 type LogicAddr uint32
@@ -27,18 +27,18 @@ type Addr struct {
 	Net   *net.TCPAddr
 }
 
-func MakeAddr(logic string, tcpAddr string) (Addr, error) {
+func MakeAddr(logic string, tcpAddr string) (*Addr, error) {
 	logicAddr, err := MakeLogicAddr(logic)
 	if nil != err {
-		return Addr{}, err
+		return nil, err
 	}
 
 	netAddr, err := net.ResolveTCPAddr("tcp", tcpAddr)
 	if nil != err {
-		return Addr{}, err
+		return nil, err
 	}
 
-	return Addr{
+	return &Addr{
 		Logic: logicAddr,
 		Net:   netAddr,
 	}, nil
@@ -76,7 +76,6 @@ func MakeLogicAddr(addr string) (LogicAddr, error) {
 	}
 
 	group, err := strconv.Atoi(v[0])
-
 	if nil != err {
 		return LogicAddr(0), ErrInvaildGroup
 	}
@@ -99,7 +98,7 @@ func MakeLogicAddr(addr string) (LogicAddr, error) {
 		return LogicAddr(0), ErrInvaildServer
 	}
 
-	if uint32(server) > ServerMask {
+	if server == 0 || uint32(server) > ServerMask {
 		return LogicAddr(0), ErrInvaildServer
 	}
 

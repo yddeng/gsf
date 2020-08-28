@@ -1,5 +1,5 @@
 syntax = "proto3";
-option go_package = "gsf/protocol/center/center";
+option go_package = "protocol";
 
 message nodeInfo {
 	uint32 logicAddr     = 1;

@@ -3,9 +3,9 @@ package center
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/yddeng/gsf/center/protocol"
 	"github.com/yddeng/gsf/cluster/addr"
 	"github.com/yddeng/gsf/codec/ss"
-	"github.com/yddeng/gsf/protocol/center/center"
 	"github.com/yddeng/gsf/util"
 	"github.com/yddeng/gsf/util/net"
 	"github.com/yddeng/gsf/util/rpc"
@@ -56,11 +56,11 @@ func onClose(session net.Session, reason string) {
 }
 
 func onLogin(replyer *rpc.Replyer, arg interface{}) {
-	req := arg.(*center.LoginReq)
+	req := arg.(*protocol.LoginReq)
 	logic := req.GetNode().GetLogicAddr()
 	netStr := req.GetNode().GetNetAddr()
 	session := replyer.Channel.(*Node).session
-	resp := &center.LoginResp{}
+	resp := &protocol.LoginResp{}
 	util.Logger().Infof("onLogin %v", req)
 
 	netAddr, err := net2.ResolveTCPAddr("tcp", netStr)
@@ -87,8 +87,8 @@ func onLogin(replyer *rpc.Replyer, arg interface{}) {
 		util.Logger().Infof("add node %d \n", n.LogicAddr.Logic)
 		_ = replyer.Reply(resp, nil)
 
-		notify := &center.NotifyNodeInfo{
-			Nodes: []*center.NodeInfo{{
+		notify := &protocol.NotifyNodeInfo{
+			Nodes: []*protocol.NodeInfo{{
 				LogicAddr: logic,
 				NetAddr:   netAddr.String(),
 			}},
@@ -98,7 +98,7 @@ func onLogin(replyer *rpc.Replyer, arg interface{}) {
 
 		for _, node := range nodes {
 			if node.LogicAddr.Logic != n.LogicAddr.Logic {
-				notify.Nodes = append(notify.Nodes, &center.NodeInfo{
+				notify.Nodes = append(notify.Nodes, &protocol.NodeInfo{
 					LogicAddr: uint32(node.LogicAddr.Logic),
 					NetAddr:   node.LogicAddr.Net.String(),
 				})
@@ -123,7 +123,7 @@ func onLogin(replyer *rpc.Replyer, arg interface{}) {
 
 		// 换了新地址
 		if n.LogicAddr.Net.String() != netAddr.String() {
-			change := &center.NodeChange{Nodes: []*center.NodeInfo{
+			change := &protocol.NodeChange{Nodes: []*protocol.NodeInfo{
 				{
 					LogicAddr: logic,
 					NetAddr:   netAddr.String(),
@@ -133,3 +133,5 @@ func onLogin(replyer *rpc.Replyer, arg interface{}) {
 		}
 	}
 }
+
+func onHeartbeat(session net.Session, msg *ss.Message) {}

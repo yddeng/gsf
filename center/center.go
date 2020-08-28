@@ -2,8 +2,8 @@ package center
 
 import (
 	"github.com/golang/protobuf/proto"
+	"github.com/yddeng/gsf/center/protocol"
 	"github.com/yddeng/gsf/codec/ss"
-	"github.com/yddeng/gsf/protocol/center/center"
 	"github.com/yddeng/gsf/util"
 	"github.com/yddeng/gsf/util/net"
 	"github.com/yddeng/gsf/util/queue"
@@ -18,7 +18,7 @@ var (
 	eventQueue       *queue.EventQueue
 	rpcServer        *rpc.Server
 	nodes            map[uint32]*Node
-	heartbeatTimeout = time.Second * 3
+	heartbeatTimeout = time.Second * 10
 )
 
 func registerHandler(cmd uint16, callback Handler) {
@@ -49,7 +49,7 @@ func Launcher(netAddr string) {
 		l.Listen(func(session net.Session) {
 			util.Logger().Infoln("new client", session.RemoteAddr().String())
 			// 超时时间
-			session.SetTimeout(10*time.Second, 0)
+			session.SetTimeout(heartbeatTimeout, 0)
 			session.SetCodec(ss.NewCodec("center_ss", "center_req", "center_resp"))
 			session.SetCloseCallBack(func(reason string) {
 				onClose(session, reason)
@@ -63,6 +63,7 @@ func Launcher(netAddr string) {
 						var err error
 						switch data.(type) {
 						case *ss.Message:
+							dispatchMsg(session, data.(*ss.Message))
 						case *rpc.Request:
 							err = rpcServer.OnRPCRequest(&Node{session: session}, data.(*rpc.Request))
 						case *rpc.Response:
@@ -88,7 +89,8 @@ func Init() {
 	eventQueue.Run(1)
 
 	// ss
+	registerHandler(protocol.HeartbeatCmd, onHeartbeat)
 
 	// rpc
-	util.Must(nil, rpcServer.Register(proto.MessageName(&center.LoginReq{}), onLogin))
+	util.Must(nil, rpcServer.Register(proto.MessageName(&protocol.LoginReq{}), onLogin))
 }
