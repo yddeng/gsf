@@ -10,7 +10,7 @@ import (
 )
 
 var message_template = `syntax = "proto3";
-option go_package = "gsf/protocol/ss/ss";
+option go_package = "gsf/protocol/ss/sspb";
 
 message %s {}
 `
@@ -41,7 +41,11 @@ var register_template = `package ss
 
 import (
 	"github.com/yddeng/gsf/codec/pb"
-	"github.com/yddeng/gsf/protocol/ss/ss"
+	"github.com/yddeng/gsf/protocol/ss/sspb"
+)
+
+const (
+	SS_SPACE = "s2s"
 )
 
 const(
@@ -74,7 +78,7 @@ func gen_register(out_path string) {
 		idMap[v.Cmd] = true
 
 		cmds += fmt.Sprintf(`	%s = %d`, strings.Title(v.Name), v.Cmd) + "\n"
-		str += fmt.Sprintf(`	pb.Register("s2s",&ss.%s{},%d)`, strings.Title(v.Name), v.Cmd) + "\n"
+		str += fmt.Sprintf(`	pb.Register(SS_SPACE,&sspb.%s{},%d)`, strings.Title(v.Name), v.Cmd) + "\n"
 	}
 
 	content := fmt.Sprintf(register_template, cmds, str)

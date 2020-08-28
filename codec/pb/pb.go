@@ -14,7 +14,7 @@ type nameCmd struct {
 	name2Cmd map[string]uint16
 }
 
-var spaceCmd map[string]*nameCmd
+var spaceCmd = map[string]*nameCmd{}
 
 func newProtocol() *protocol.Protocol {
 	return protocol.NewProtoc(&protobuf.Protobuf{})

@@ -2,7 +2,12 @@ package rpc
 
 import (
 	"github.com/yddeng/gsf/codec/pb"
-	"github.com/yddeng/gsf/protocol/rpc/rpc"
+	"github.com/yddeng/gsf/protocol/rpc/rpcpb"
+)
+
+const (
+	REQ_SPACE  = "rpc_req"
+	RESP_SPACE = "rpc_resp"
 )
 
 const(
@@ -12,9 +17,9 @@ const(
 
 func init() {
 	// rpc_req
-	pb.Register("rpc_req",&rpc.EchoReq{},1)
+	pb.Register(REQ_SPACE,&rpcpb.EchoReq{},1)
 
 	// rpc_resp
-	pb.Register("rpc_resp",&rpc.EchoResp{},1)
+	pb.Register(RESP_SPACE,&rpcpb.EchoResp{},1)
 
 }

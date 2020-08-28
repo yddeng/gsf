@@ -10,7 +10,7 @@ import (
 )
 
 var message_template = `syntax = "proto3";
-option go_package = "gsf/protocol/cs/cs";
+option go_package = "gsf/protocol/cs/cspb";
 
 message %sToS {}
 
@@ -42,8 +42,13 @@ var register_template = `package cs
 
 import (
 	"github.com/yddeng/gsf/codec/pb"
-	"github.com/yddeng/gsf/protocol/cs/cs"
+	"github.com/yddeng/gsf/protocol/cs/cspb"
 )
+
+const (
+	CS_SPACE = "c2s"
+	SC_SPACE = "s2c"
+) 
 
 const(
 %s
@@ -79,8 +84,8 @@ func gen_register(out_path string) {
 		idMap[v.Cmd] = true
 
 		cmds += fmt.Sprintf(`	%s = %d`, strings.Title(v.Name), v.Cmd) + "\n"
-		toS_str = toS_str + fmt.Sprintf(`	pb.Register("c2s",&cs.%sToS{},%d)`, strings.Title(v.Name), v.Cmd) + "\n"
-		toC_str = toC_str + fmt.Sprintf(`	pb.Register("s2c",&cs.%sToC{},%d)`, strings.Title(v.Name), v.Cmd) + "\n"
+		toS_str = toS_str + fmt.Sprintf(`	pb.Register(CS_SPACE,&cspb.%sToS{},%d)`, strings.Title(v.Name), v.Cmd) + "\n"
+		toC_str = toC_str + fmt.Sprintf(`	pb.Register(SC_SPACE,&cspb.%sToC{},%d)`, strings.Title(v.Name), v.Cmd) + "\n"
 	}
 
 	content := fmt.Sprintf(register_template, cmds, toS_str, toC_str)

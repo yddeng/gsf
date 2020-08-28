@@ -2,7 +2,11 @@ package ss
 
 import (
 	"github.com/yddeng/gsf/codec/pb"
-	"github.com/yddeng/gsf/protocol/ss/ss"
+	"github.com/yddeng/gsf/protocol/ss/sspb"
+)
+
+const (
+	SS_SPACE = "s2s"
 )
 
 const(
@@ -11,6 +15,6 @@ const(
 )
 
 func init() {
-	pb.Register("s2s",&ss.Echo{},1)
+	pb.Register(SS_SPACE,&sspb.Echo{},1)
 
 }

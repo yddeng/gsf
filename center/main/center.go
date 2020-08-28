@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"github.com/yddeng/gsf/center"
+	_ "github.com/yddeng/gsf/codec/cs"
+	_ "github.com/yddeng/gsf/codec/ss"
 	"github.com/yddeng/gsf/util"
 	"github.com/yddeng/gsf/util/signal"
 	"os"

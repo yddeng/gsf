@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/yddeng/gsf/codec/pb"
+	_ "github.com/yddeng/gsf/protocol/rpc"
+	_ "github.com/yddeng/gsf/protocol/ss"
 	"github.com/yddeng/gsf/util/buffer"
 	"github.com/yddeng/gsf/util/rpc"
 	"io"

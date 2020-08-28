@@ -10,7 +10,7 @@ import (
 )
 
 var message_template = `syntax = "proto3";
-option go_package = "gsf/protocol/rpc/rpc";
+option go_package = "gsf/protocol/rpc/rpcpb";
 
 message %sReq {}
 
@@ -43,7 +43,12 @@ var register_template = `package rpc
 
 import (
 	"github.com/yddeng/gsf/codec/pb"
-	"github.com/yddeng/gsf/protocol/rpc/rpc"
+	"github.com/yddeng/gsf/protocol/rpc/rpcpb"
+)
+
+const (
+	REQ_SPACE  = "rpc_req"
+	RESP_SPACE = "rpc_resp"
 )
 
 const(
@@ -80,8 +85,8 @@ func gen_register(out_path string) {
 		idMap[v.Cmd] = true
 
 		cmds += fmt.Sprintf(`	%s = %d`, strings.Title(v.Name), v.Cmd) + "\n"
-		req_str = req_str + fmt.Sprintf(`	pb.Register("rpc_req",&rpc.%sReq{},%d)`, strings.Title(v.Name), v.Cmd) + "\n"
-		resp_str = resp_str + fmt.Sprintf(`	pb.Register("rpc_resp",&rpc.%sResp{},%d)`, strings.Title(v.Name), v.Cmd) + "\n"
+		req_str = req_str + fmt.Sprintf(`	pb.Register(REQ_SPACE,&rpcpb.%sReq{},%d)`, strings.Title(v.Name), v.Cmd) + "\n"
+		resp_str = resp_str + fmt.Sprintf(`	pb.Register(RESP_SPACE,&rpcpb.%sResp{},%d)`, strings.Title(v.Name), v.Cmd) + "\n"
 	}
 
 	content := fmt.Sprintf(register_template, cmds, req_str, resp_str)
