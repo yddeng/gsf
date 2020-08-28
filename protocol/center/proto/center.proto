@@ -11,7 +11,7 @@ message loginReq {
 }
 
 message loginResp {
-	int32  errCode = 1;
+	bool   ok      = 1;
 	string msg     = 2;
 }
 

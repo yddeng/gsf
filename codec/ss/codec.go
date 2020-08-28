@@ -114,9 +114,8 @@ func (decoder *Codec) unPack() (interface{}, error) {
 			return nil, err
 		}
 		msg = &Message{
-			seqNo: decoder.seqNo,
-			data:  m.(proto.Message),
-			cmd:   decoder.cmd,
+			data: m.(proto.Message),
+			cmd:  decoder.cmd,
 		}
 
 	case RPC_Request:
@@ -164,7 +163,6 @@ func (encoder *Codec) Encode(o interface{}) ([]byte, error) {
 	case *Message:
 		msg := o.(*Message)
 		tt = SS_Message
-		seqNo = msg.GetSeqNo()
 		cmd, data, err = pb.Marshal(encoder.ss, msg.GetData())
 		if err != nil {
 			return nil, err

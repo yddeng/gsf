@@ -5,13 +5,12 @@ import (
 )
 
 type Message struct {
-	seqNo uint64
-	data  proto.Message
-	cmd   uint16
+	data proto.Message
+	cmd  uint16
 }
 
-func NewMessage(seqNo uint64, data proto.Message) *Message {
-	return &Message{seqNo: seqNo, data: data}
+func NewMessage(data proto.Message) *Message {
+	return &Message{data: data}
 }
 
 func (this *Message) GetData() interface{} {
@@ -20,8 +19,4 @@ func (this *Message) GetData() interface{} {
 
 func (this *Message) GetCmd() uint16 {
 	return this.cmd
-}
-
-func (this *Message) GetSeqNo() uint64 {
-	return this.seqNo
 }
