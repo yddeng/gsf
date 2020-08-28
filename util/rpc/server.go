@@ -35,7 +35,7 @@ func (server *Server) Register(name string, h MethodHandler) error {
 
 func (server *Server) OnRPCRequest(channel RPCChannel, req *Request) error {
 	var err error
-	replyer := &Replyer{channel: channel, req: req}
+	replyer := &Replyer{Channel: channel, req: req}
 
 	server.RLock()
 	defer server.RUnlock()
@@ -69,7 +69,7 @@ func (server *Server) callMethod(method MethodHandler, replyer *Replyer) (err er
 }
 
 type Replyer struct {
-	channel RPCChannel
+	Channel RPCChannel
 	fired   int32 //防止重复Reply
 	req     *Request
 }
@@ -83,9 +83,12 @@ func (r *Replyer) Reply(ret interface{}, err error) error {
 }
 
 func (r *Replyer) reply(resp *Response) error {
-	return r.channel.SendResponse(resp)
+	return r.Channel.SendResponse(resp)
 }
 
 func NewServer() *Server {
-	return &Server{}
+	return &Server{
+		methods: map[string]MethodHandler{},
+		RWMutex: new(sync.RWMutex),
+	}
 }
