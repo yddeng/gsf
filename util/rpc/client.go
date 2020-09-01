@@ -3,10 +3,13 @@ package rpc
 import (
 	"errors"
 	"fmt"
-	"github.com/yddeng/dnet"
 	"sync"
 	"sync/atomic"
 	"time"
+)
+
+var (
+	ErrRPCTimeout = fmt.Errorf("RPC timeout")
 )
 
 type Call struct {
@@ -48,7 +51,7 @@ func (client *Client) AsynCall(channel RPCChannel, method string, data interface
 	c.timer = time.AfterFunc(timeout, func() {
 		if _, ok := client.pending.Load(c.reqNo); ok {
 			client.pending.Delete(c.reqNo)
-			c.callback(nil, dnet.ErrRPCTimeout)
+			c.callback(nil, ErrRPCTimeout)
 		}
 	})
 

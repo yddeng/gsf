@@ -189,6 +189,7 @@ func connectOk(end *endpoint, session dnet.Session) {
 	end.dialTimeout = time.Time{}
 
 	if end.session != nil {
+		end.Unlock()
 		util.Logger().Infof("endpoint %s already connect", end.logic.Logic.String())
 		session.Close(fmt.Sprintf("endpoint %s already connect", end.logic.Logic.String()))
 		return

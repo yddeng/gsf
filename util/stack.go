@@ -1,12 +1,10 @@
 package util
 
 import (
-	"runtime"
-
 	"bytes"
 	"fmt"
-	"github.com/magicsea/ganet/log"
-	//"github.com/davecgh/go-spew/spew"
+	"log"
+	"runtime"
 )
 
 // 产生panic时的调用栈打印
@@ -31,7 +29,7 @@ func PrintPanicStack(extras ...interface{}) {
 		//}
 	}
 	if haveErr {
-		log.Error(buff.String())
+		log.Println(buff.String())
 	}
 
 }

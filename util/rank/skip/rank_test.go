@@ -7,9 +7,7 @@ package skip
 
 import (
 	"fmt"
-	"github.com/schollz/progressbar"
 	"math/rand"
-	"net/http"
 	_ "net/http/pprof"
 	"testing"
 	"time"
@@ -20,7 +18,6 @@ func TestBenchmarkRank2(t *testing.T) {
 	testCount := 50000000
 	idRange := 10000000
 	{
-		bar := progressbar.New(int(testCount))
 
 		beg := time.Now()
 		for i := 0; i < testCount; i++ {
@@ -33,7 +30,7 @@ func TestBenchmarkRank2(t *testing.T) {
 				score = item.value + rand.Int()%10000
 			}
 			r.UpdateScore(uint64(idx), score)
-			bar.Add(1)
+
 		}
 		fmt.Println(time.Now().Sub(beg), len(r.id2Item))
 		fmt.Println(len(r.spans), len(r.id2Item)/len(r.spans))
@@ -48,7 +45,6 @@ func TestBenchmarkRank1(t *testing.T) {
 	idRange := 10000000
 
 	{
-		bar := progressbar.New(int(testCount))
 
 		beg := time.Now()
 		for i := 0; i < testCount; i++ {
@@ -56,16 +52,15 @@ func TestBenchmarkRank1(t *testing.T) {
 			score := rand.Int()%1000000 + 1
 			//fmt.Println(i, idx, score)
 			r.UpdateScore(uint64(idx), score)
-			bar.Add(1)
+
 		}
 		fmt.Println(time.Now().Sub(beg))
 		fmt.Println(len(r.spans), len(r.id2Item)/len(r.spans))
-		assert.Equal(t, true, r.Check())
+
 	}
 
 	{
 		testCount := 10000000
-		bar := progressbar.New(int(testCount))
 
 		beg := time.Now()
 		for i := 0; i < testCount; i++ {
@@ -73,18 +68,16 @@ func TestBenchmarkRank1(t *testing.T) {
 			score := rand.Int()%1000000 + 1
 			//fmt.Println(idx, score)
 			r.UpdateScore(uint64(idx), score)
-			bar.Add(1)
 		}
 		fmt.Println(time.Now().Sub(beg))
 		fmt.Println(len(r.spans), len(r.id2Item)/len(r.spans))
-		assert.Equal(t, true, r.Check())
+
 	}
 
 	{
 
 		testCount := 10000000
 
-		bar := progressbar.New(int(testCount))
 		beg := time.Now()
 		for i := 0; i < testCount; i++ {
 			idx := (rand.Int() % len(r.id2Item)) + 1
@@ -93,34 +86,31 @@ func TestBenchmarkRank1(t *testing.T) {
 			score = item.value + score
 			//fmt.Println(idx, score)
 			r.UpdateScore(uint64(idx), score)
-			bar.Add(1)
+
 		}
 		fmt.Println(time.Now().Sub(beg))
 		fmt.Println(len(r.spans), len(r.id2Item)/len(r.spans))
-		assert.Equal(t, true, r.Check())
+
 	}
 
 	{
-
-		bar := progressbar.New(int(testCount))
 
 		beg := time.Now()
 		for i := 0; i < testCount; i++ {
 			idx := i%idRange + 1
 			r.GetRankPersent(uint64(idx))
-			bar.Add(1)
+
 		}
 		fmt.Println(time.Now().Sub(beg))
 	}
 
 	{
-		bar := progressbar.New(int(testCount))
 
 		beg := time.Now()
 		for i := 0; i < testCount; i++ {
 			idx := i%idRange + 1
 			r.GetRank(uint64(idx))
-			bar.Add(1)
+
 		}
 		fmt.Println(time.Now().Sub(beg))
 		fmt.Println(len(r.spans), len(r.id2Item)/len(r.spans))

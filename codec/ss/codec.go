@@ -10,7 +10,6 @@ import (
 	"github.com/yddeng/gsf/util/rpc"
 	"io"
 	"reflect"
-	"teacher/control/util"
 )
 
 // 编解码器
@@ -201,7 +200,7 @@ func (encoder *Codec) Encode(o interface{}) ([]byte, error) {
 	}
 
 	totalLen := headSize + bodyLen
-	buff := util.NewBuffer(totalLen)
+	buff := buffer.NewBufferWithCap(totalLen)
 	//tt
 	buff.WriteUint8BE(tt)
 	//seq

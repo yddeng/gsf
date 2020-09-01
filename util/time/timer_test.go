@@ -2,7 +2,7 @@ package time
 
 import (
 	"fmt"
-	"github.com/yddeng/dutil/queue"
+	"github.com/yddeng/gsf/util/queue"
 	"testing"
 	"time"
 )

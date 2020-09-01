@@ -63,7 +63,7 @@ func TestAsynCall1(t *testing.T) {
 		msg := i.(*rpcpb.EchoResp)
 		fmt.Println(msg)
 	})
-	Post(logic1.Logic, &sspb.Echo{Msg: "hello post"})
+	Post(logic1.Logic, &sspb.Echo{Msg: "hello post1"})
 
 	// 超时断开连接，后重连
 	time.Sleep(time.Second * 40)
@@ -75,7 +75,7 @@ func TestAsynCall1(t *testing.T) {
 		msg := i.(*rpcpb.EchoResp)
 		fmt.Println(msg)
 	})
-	Post(logic2.Logic, &sspb.Echo{Msg: "hello post"})
+	Post(logic2.Logic, &sspb.Echo{Msg: "hello post1"})
 	select {}
 }
 
@@ -105,7 +105,7 @@ func TestAsynCall2(t *testing.T) {
 	}
 
 	time.Sleep(time.Second)
-	err = AsynCall(logic1.Logic, &rpcpb.EchoReq{Msg: "hello call2"}, func(i interface{}, e error) {
+	AsynCall(logic1.Logic, &rpcpb.EchoReq{Msg: "hello call2"}, func(i interface{}, e error) {
 		if e != nil {
 			fmt.Println(e)
 			return
@@ -113,9 +113,7 @@ func TestAsynCall2(t *testing.T) {
 		msg := i.(*rpcpb.EchoResp)
 		fmt.Println(msg)
 	})
-	if err != nil {
-		fmt.Println(err)
-	}
+	Post(logic1.Logic, &sspb.Echo{Msg: "hello post2"})
 
 	select {}
 }

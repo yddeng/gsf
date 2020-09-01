@@ -200,11 +200,8 @@ func (this *TCPConn) SendBytes(data []byte) error {
 	}
 
 	this.lock.Lock()
-	if this.flag == 0 {
+	if this.flag != started {
 		return ErrNotStarted
-	}
-	if this.flag == closed {
-		return ErrSessionClosed
 	}
 	this.lock.Unlock()
 
@@ -219,12 +216,14 @@ func (this *TCPConn) SendBytes(data []byte) error {
 func (this *TCPConn) Close(reason string) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
-	if (this.flag & closed) > 0 {
+
+	this.closeReason = reason
+	if this.flag == 0 || this.flag == closed {
+		this.close()
 		return
 	}
 
 	close(this.sendBufChan)
-	this.closeReason = reason
 	this.flag = closed
 	this.conn.CloseRead()
 }

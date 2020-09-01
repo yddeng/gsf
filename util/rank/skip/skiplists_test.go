@@ -6,12 +6,8 @@ package skip
 //go test -v -run=^$ -bench BenchmarkRank -count 10
 
 import (
-	//"fmt"
-	//"github.com/schollz/progressbar"
-	//"github.com/stretchr/testify/assert"
 	"math/rand"
 	"testing"
-	//"time"
 )
 
 func TestSkipLists(t *testing.T) {
