@@ -108,7 +108,7 @@ func (this *centerPoint) onConnected(session dnet.Session) {
 				NetAddr:   this.self.NetString(),
 			},
 		}
-		err := this.rpcClient.AsynCall(&RPCChannel{session: session}, proto.MessageName(req), req, rpcTimeout, func(i interface{}, e error) {
+		err := this.rpcClient.AsynCall(this, proto.MessageName(req), req, rpcTimeout, func(i interface{}, e error) {
 			if e != nil {
 				msg := fmt.Sprintf("loginResp failed, e %s", e.Error())
 				util.Logger().Errorf(msg)
@@ -139,6 +139,14 @@ func (this *centerPoint) send(msg interface{}) error {
 		return fmt.Errorf("session is nil")
 	}
 	return this.session.Send(msg)
+}
+
+func (this *centerPoint) SendRequest(req *rpc.Request) error {
+	return this.send(req)
+}
+
+func (this *centerPoint) SendResponse(resp *rpc.Response) error {
+	return this.send(resp)
 }
 
 func (this *centerPoint) dispatchMsg(session dnet.Session, msg *ss.Message) error {

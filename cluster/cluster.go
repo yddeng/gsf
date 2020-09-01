@@ -41,19 +41,12 @@ func Launcher(centerAddr string, self *addr.Addr) error {
 func Post(logic addr.LogicAddr, msg proto.Message) error {
 	end := endpoints.getEndpointByLogic(logic)
 	if end == nil {
+		util.Logger().Errorf("%s is not found", logic.String())
 		return fmt.Errorf("%s is not found", logic.String())
 	}
-	return post(end, msg)
-}
 
-func post(end *endpoint, msg proto.Message) error {
 	end.Lock()
 	defer end.Unlock()
-	if end.session == nil {
-		end.postMsg = append(end.postMsg, msg)
-		dial(end)
-		return nil
-	}
 	return end.send(ss.NewMessage(msg))
 }
 
@@ -69,7 +62,7 @@ func dispatchSS(from addr.LogicAddr, msg *ss.Message) error {
 	cmd := msg.GetCmd()
 	h, ok := ssHandler[cmd]
 	if ok {
-		h(from, msg.GetData().(proto.Message))
+		h(from, msg.GetData())
 		return nil
 	}
 	return fmt.Errorf("dispatchSS invailed cmd %d ", cmd)

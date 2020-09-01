@@ -8,8 +8,7 @@ import (
 )
 
 type Server struct {
-	methods   map[string]MethodHandler
-	lastReqNo uint64
+	methods map[string]MethodHandler
 	*sync.RWMutex
 }
 
@@ -38,16 +37,10 @@ func (server *Server) OnRPCRequest(channel RPCChannel, req *Request) error {
 	replyer := &Replyer{Channel: channel, req: req}
 
 	server.RLock()
-	defer server.RUnlock()
 	method, ok := server.methods[req.Method]
+	server.RUnlock()
 	if !ok {
 		err = fmt.Errorf("invaild method:%s", req.Method)
-		_ = replyer.reply(&Response{SeqNo: req.SeqNo, Err: err})
-		return err
-	}
-	// 重复请求
-	if req.SeqNo <= server.lastReqNo {
-		err = fmt.Errorf("repeated reqNo:%d", req.SeqNo)
 		_ = replyer.reply(&Response{SeqNo: req.SeqNo, Err: err})
 		return err
 	}

@@ -44,8 +44,9 @@ func dial(end *endpoint) {
 		return
 	}
 
+	end.dialing = true
 	if end.dialTimeout.IsZero() {
-		end.dialTimeout = time.Now().Add(rpcTimeout)
+		end.dialTimeout = time.Now().Add(rpcTimeout / 2)
 	}
 
 	go func() {
@@ -105,13 +106,18 @@ func dialFailed(end *endpoint, err error) {
 			dial(end)
 			return
 		} else {
-			end.postMsg = end.postMsg[0:0]
-			callMsg := end.callMsg
-			end.callMsg = end.callMsg[0:0]
+			end.ssMsg = end.ssMsg[0:0]
+			reqMsg := end.reqMsg
+			end.reqMsg = end.reqMsg[0:0]
+			logicAddr := end.logic.Logic.String()
 
 			eventQueue.Push(func() {
-				for _, c := range callMsg {
-					c.callback(nil, fmt.Errorf("dial %s failed", end.logic.Logic.String()))
+				for _, req := range reqMsg {
+					_ = rpcMgr.rpcClient.OnRPCResponse(&rpc.Response{
+						SeqNo: req.SeqNo,
+						Data:  nil,
+						Err:   fmt.Errorf("connect logicAddr %s failed", logicAddr),
+					})
 				}
 			})
 		}
@@ -198,7 +204,6 @@ func connectOk(end *endpoint, session dnet.Session) {
 			session.Close(err.Error())
 		} else {
 			eventQueue.Push(func() {
-
 				var err error
 				switch data.(type) {
 				case *ss.Message:
@@ -206,7 +211,7 @@ func connectOk(end *endpoint, session dnet.Session) {
 					err = dispatchSS(end.logic.Logic, data.(*ss.Message))
 					end.Unlock()
 				case *rpc.Request:
-					err = rpcMgr.rpcServer.OnRPCRequest(&RPCChannel{session: session}, data.(*rpc.Request))
+					err = rpcMgr.rpcServer.OnRPCRequest(end, data.(*rpc.Request))
 				case *rpc.Response:
 					err = rpcMgr.rpcClient.OnRPCResponse(data.(*rpc.Response))
 				}
@@ -216,28 +221,18 @@ func connectOk(end *endpoint, session dnet.Session) {
 			})
 		}
 	})
-	now := time.Now()
-	// 将消息发送出去
-	for _, msg := range end.postMsg {
-		end.send(ss.NewMessage(msg))
-	}
-	end.postMsg = end.postMsg[0:0]
-	callMsg := end.callMsg
-	end.callMsg = end.callMsg[0:0]
+
+	ssMsg := end.ssMsg
+	end.ssMsg = end.ssMsg[0:0]
+	reqMsg := end.reqMsg
+	end.reqMsg = end.reqMsg[0:0]
 	end.Unlock()
 
-	for _, c := range callMsg {
-		if now.After(c.deadline) {
-			eventQueue.Push(func() {
-				c.callback(nil, fmt.Errorf("rpc call timeout"))
-			})
-		} else {
-			err := rpcMgr.asynCall(end, c.msg, c.callback)
-			if err != nil {
-				eventQueue.Push(func() {
-					c.callback(nil, err)
-				})
-			}
-		}
+	// 将消息发送出去
+	for _, msg := range ssMsg {
+		_ = end.send(msg)
+	}
+	for _, req := range reqMsg {
+		_ = end.send(req)
 	}
 }

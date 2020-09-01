@@ -39,9 +39,13 @@ func TestAsynCall1(t *testing.T) {
 		fmt.Println(msg)
 
 		resp := &rpcpb.EchoResp{
-			Msg: msg.GetMsg(),
+			Msg: "reply " + msg.GetMsg(),
 		}
 		replyer.Reply(resp, nil)
+	})
+	RegisterSSMethod(ss.Echo, func(from addr.LogicAddr, msg proto.Message) {
+		req := msg.(*sspb.Echo)
+		fmt.Println(req)
 	})
 
 	err := Launcher("127.0.0.1:9874", logic1)
@@ -50,9 +54,28 @@ func TestAsynCall1(t *testing.T) {
 		return
 	}
 
+	time.Sleep(time.Second)
+	AsynCall(logic1.Logic, &rpcpb.EchoReq{Msg: "hello call1"}, func(i interface{}, e error) {
+		if e != nil {
+			fmt.Println(e)
+			return
+		}
+		msg := i.(*rpcpb.EchoResp)
+		fmt.Println(msg)
+	})
+	Post(logic1.Logic, &sspb.Echo{Msg: "hello post"})
+
 	// 超时断开连接，后重连
 	time.Sleep(time.Second * 40)
-	Post(logic2.Logic, &sspb.Echo{Msg: "hello"})
+	AsynCall(logic2.Logic, &rpcpb.EchoReq{Msg: "hello call1"}, func(i interface{}, e error) {
+		if e != nil {
+			fmt.Println(e)
+			return
+		}
+		msg := i.(*rpcpb.EchoResp)
+		fmt.Println(msg)
+	})
+	Post(logic2.Logic, &sspb.Echo{Msg: "hello post"})
 	select {}
 }
 
@@ -66,7 +89,7 @@ func TestAsynCall2(t *testing.T) {
 		fmt.Println(msg)
 
 		resp := &rpcpb.EchoResp{
-			Msg: msg.GetMsg(),
+			Msg: "reply " + msg.GetMsg(),
 		}
 		replyer.Reply(resp, nil)
 	})
@@ -82,7 +105,7 @@ func TestAsynCall2(t *testing.T) {
 	}
 
 	time.Sleep(time.Second)
-	err = AsynCall(logic1.Logic, &rpcpb.EchoReq{Msg: "hello"}, func(i interface{}, e error) {
+	err = AsynCall(logic1.Logic, &rpcpb.EchoReq{Msg: "hello call2"}, func(i interface{}, e error) {
 		if e != nil {
 			fmt.Println(e)
 			return
@@ -93,5 +116,6 @@ func TestAsynCall2(t *testing.T) {
 	if err != nil {
 		fmt.Println(err)
 	}
+
 	select {}
 }
