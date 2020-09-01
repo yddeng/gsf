@@ -7,18 +7,18 @@ import (
 	"github.com/yddeng/gsf/cluster/addr"
 	"github.com/yddeng/gsf/codec/ss"
 	"github.com/yddeng/gsf/util"
-	net2 "github.com/yddeng/gsf/util/net"
+	dnet "github.com/yddeng/gsf/util/net"
 	"github.com/yddeng/gsf/util/rpc"
 	"net"
 	"time"
 )
 
-type CenterPoint struct {
+type centerPoint struct {
 	centerAddr string
 	self       *addr.Addr
 	dialing    bool
-	session    net2.Session
-	handler    map[uint16]func(net2.Session, *ss.Message)
+	session    dnet.Session
+	handler    map[uint16]func(dnet.Session, *ss.Message)
 	rpcClient  *rpc.Client
 
 	heartbeatTicker *time.Ticker
@@ -26,23 +26,23 @@ type CenterPoint struct {
 }
 
 func connectCenter(centerAddr string, self *addr.Addr) {
-	centerPoint = &CenterPoint{
+	centerP = &centerPoint{
 		centerAddr: centerAddr,
 		self:       self,
 		dialing:    false,
-		handler: map[uint16]func(net2.Session, *ss.Message){
+		handler: map[uint16]func(dnet.Session, *ss.Message){
 			protocol.NotifyNodeInfoCmd: onNotifyNodeInfo,
 			protocol.NodeLeaveCmd:      onNodeLeave,
-			protocol.NodeChangeCmd:     onNodeChange,
+			protocol.NodeEnterCmd:      onNodeEnter,
 		},
 		rpcClient: rpc.NewClient(),
 		heartbeat: ss.NewMessage(&protocol.Heartbeat{}),
 	}
 
-	centerPoint.dial()
+	eventQueue.Push(func() { centerP.dial() })
 }
 
-func (this *CenterPoint) dial() {
+func (this *centerPoint) dial() {
 	if this.dialing {
 		return
 	}
@@ -51,7 +51,7 @@ func (this *CenterPoint) dial() {
 
 	go func() {
 		for {
-			session, err := net2.DialTCP("tcp", this.centerAddr, time.Second*5)
+			session, err := dnet.DialTCP("tcp", this.centerAddr, time.Second*5)
 			if nil == err && session != nil {
 				this.onConnected(session)
 				return
@@ -63,7 +63,7 @@ func (this *CenterPoint) dial() {
 	}()
 }
 
-func (this *CenterPoint) onConnected(session net2.Session) {
+func (this *centerPoint) onConnected(session dnet.Session) {
 	eventQueue.Push(func() {
 		this.dialing = false
 		this.session = session
@@ -71,11 +71,11 @@ func (this *CenterPoint) onConnected(session net2.Session) {
 		session.SetCodec(ss.NewCodec(protocol.SS_SPACE, protocol.REQ_SPACE, protocol.RESP_SPACE))
 		session.SetCloseCallBack(func(reason string) {
 			eventQueue.Push(func() {
-				this.session = nil
 				if this.heartbeatTicker != nil {
 					this.heartbeatTicker.Stop()
 					this.heartbeatTicker = nil
 				}
+				this.session = nil
 				util.Logger().Infof("center session closed, reason: %s\n", reason)
 				this.dial()
 			})
@@ -101,31 +101,31 @@ func (this *CenterPoint) onConnected(session net2.Session) {
 			}
 		})
 
-		// 请求登陆
+		// 注册身份信息
 		req := &protocol.LoginReq{
 			Node: &protocol.NodeInfo{
 				LogicAddr: uint32(this.self.Logic),
 				NetAddr:   this.self.NetString(),
 			},
 		}
-		err := this.rpcClient.AsynCall(&RPCChannel{session: session}, proto.MessageName(req), req, func(i interface{}, e error) {
+		err := this.rpcClient.AsynCall(&RPCChannel{session: session}, proto.MessageName(req), req, rpcTimeout, func(i interface{}, e error) {
 			if e != nil {
 				msg := fmt.Sprintf("loginResp failed, e %s", e.Error())
 				util.Logger().Errorf(msg)
-				session.Close(msg)
+				panic(msg)
 				return
 			}
 			resp := i.(*protocol.LoginResp)
 			if !resp.GetOk() {
 				msg := fmt.Sprintf("loginResp failed, msg %s", resp.GetMsg())
 				util.Logger().Errorf(msg)
-				session.Close(msg)
+				panic(msg)
 				return
 			}
 			util.Logger().Infoln("login center ok")
 			// 在center上注册成功，心跳
 			this.heartbeatTicker = util.StartLoopTask(time.Second, func() {
-				eventQueue.Push(func() { this.send(this.heartbeat) })
+				_ = this.send(this.heartbeat)
 			})
 		})
 		if err != nil {
@@ -134,14 +134,14 @@ func (this *CenterPoint) onConnected(session net2.Session) {
 	})
 }
 
-func (this *CenterPoint) send(msg interface{}) {
+func (this *centerPoint) send(msg interface{}) error {
 	if this.session == nil {
-		return
+		return fmt.Errorf("session is nil")
 	}
-	this.session.Send(msg)
+	return this.session.Send(msg)
 }
 
-func (this *CenterPoint) dispatchMsg(session net2.Session, msg *ss.Message) error {
+func (this *centerPoint) dispatchMsg(session dnet.Session, msg *ss.Message) error {
 	cmd := msg.GetCmd()
 	if h, ok := this.handler[cmd]; ok {
 		h(session, msg)
@@ -150,36 +150,55 @@ func (this *CenterPoint) dispatchMsg(session net2.Session, msg *ss.Message) erro
 	return fmt.Errorf("dispatchMsg invailed cmd %d in nameSpace %s", cmd, protocol.SS_SPACE)
 }
 
-// 新节点上线，通知自己有哪些在线
-func onNotifyNodeInfo(session net2.Session, msg *ss.Message) {
+// 通知自己有哪些在线
+func onNotifyNodeInfo(session dnet.Session, msg *ss.Message) {
 	req := msg.GetData().(*protocol.NotifyNodeInfo)
 	util.Logger().Infof("onNotifyNodeInfo %v", req)
 	for _, v := range req.GetNodes() {
-		logicAddr := v.GetLogicAddr()
-		end, ok := endPoints[logicAddr]
-		if ok {
-			util.Logger().Debugf("endpoint %s is exist", addr.LogicAddr(logicAddr).String())
-			continue
-		}
+		logicAddr := addr.LogicAddr(v.GetLogicAddr())
 		netAddr, err := net.ResolveTCPAddr("tcp", v.GetNetAddr())
 		if err != nil {
-			util.Logger().Errorf("endpoint %s netAddr err: %s", addr.LogicAddr(logicAddr).String(), err)
+			util.Logger().Errorf("endpoint %s netAddr err: %s", logicAddr.String(), err)
 			continue
 		}
-		end = &EndPoint{logic: &addr.Addr{
-			Logic: addr.LogicAddr(logicAddr),
-			Net:   netAddr,
-		}}
-		endPoints[logicAddr] = end
+		end := endpoints.getEndpointByLogic(logicAddr)
+		if end != nil {
+			end.Lock()
+			// 新节点上来，替换原有连接
+			if end.logic.NetString() != netAddr.String() {
+				if end.session != nil {
+					end.session.Close(fmt.Sprintf("logicAddr %s replace neatAddr %s -> %s", end.logic.Logic.String(), end.logic.NetString(), netAddr.String()))
+				}
+				end.logic.Net = netAddr
+			}
+			end.Unlock()
+		} else {
+			endpoints.addEndpoint(&addr.Addr{
+				Logic: logicAddr,
+				Net:   netAddr,
+			})
+		}
 	}
+
 }
 
-func onNodeLeave(session net2.Session, msg *ss.Message) {
+func onNodeLeave(session dnet.Session, msg *ss.Message) {
 	req := msg.GetData().(*protocol.NodeLeave)
 	util.Logger().Infof("onNodeLeave %v", req)
+	endpoints.removeEndpoint(addr.LogicAddr(req.GetLogicAddr()))
 }
 
-func onNodeChange(session net2.Session, msg *ss.Message) {
-	req := msg.GetData().(*protocol.NodeChange)
-	util.Logger().Infof("onNodeChange %v", req)
+func onNodeEnter(session dnet.Session, msg *ss.Message) {
+	req := msg.GetData().(*protocol.NodeEnter)
+	util.Logger().Infof("onNodeEnter %v", req)
+	logicAddr := addr.LogicAddr(req.GetNode().GetLogicAddr())
+	netAddr, err := net.ResolveTCPAddr("tcp", req.GetNode().GetNetAddr())
+	if err != nil {
+		util.Logger().Errorf("endpoint %s netAddr err: %s", logicAddr.String(), err)
+		return
+	}
+	endpoints.addEndpoint(&addr.Addr{
+		Logic: logicAddr,
+		Net:   netAddr,
+	})
 }

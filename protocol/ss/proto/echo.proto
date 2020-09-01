@@ -1,4 +1,6 @@
 syntax = "proto3";
 option go_package = "gsf/protocol/ss/sspb";
 
-message echo {}
+message echo {
+    string msg = 1;
+}

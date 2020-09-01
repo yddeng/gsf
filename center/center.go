@@ -5,13 +5,13 @@ import (
 	"github.com/yddeng/gsf/center/protocol"
 	"github.com/yddeng/gsf/codec/ss"
 	"github.com/yddeng/gsf/util"
-	"github.com/yddeng/gsf/util/net"
+	dnet "github.com/yddeng/gsf/util/net"
 	"github.com/yddeng/gsf/util/queue"
 	"github.com/yddeng/gsf/util/rpc"
 	"time"
 )
 
-type Handler func(net.Session, *ss.Message)
+type Handler func(dnet.Session, *ss.Message)
 
 var (
 	msgHandlers      map[uint16]Handler
@@ -30,7 +30,7 @@ func registerHandler(cmd uint16, callback Handler) {
 	msgHandlers[cmd] = callback
 }
 
-func dispatchMsg(session net.Session, msg *ss.Message) {
+func dispatchMsg(session dnet.Session, msg *ss.Message) {
 	if nil != msg {
 		cmd := msg.GetCmd()
 		handler, ok := msgHandlers[cmd]
@@ -41,12 +41,12 @@ func dispatchMsg(session net.Session, msg *ss.Message) {
 }
 
 func Launcher(netAddr string) {
-	l := util.Must(net.NewTCPListener("tcp", netAddr)).(*net.TCPListener)
+	l := util.Must(dnet.NewTCPListener("tcp", netAddr)).(*dnet.TCPListener)
 
 	Init()
 
 	util.Must(nil,
-		l.Listen(func(session net.Session) {
+		l.Listen(func(session dnet.Session) {
 			util.Logger().Infoln("new client", session.RemoteAddr().String())
 			// 超时时间
 			session.SetTimeout(heartbeatTimeout, 0)

@@ -7,14 +7,14 @@ import (
 	"github.com/yddeng/gsf/cluster/addr"
 	"github.com/yddeng/gsf/codec/ss"
 	"github.com/yddeng/gsf/util"
-	"github.com/yddeng/gsf/util/net"
+	dnet "github.com/yddeng/gsf/util/net"
 	"github.com/yddeng/gsf/util/rpc"
-	net2 "net"
+	"net"
 )
 
 type Node struct {
 	LogicAddr *addr.Addr
-	session   net.Session
+	session   dnet.Session
 }
 
 func broadcast(msg proto.Message, except ...addr.LogicAddr) {
@@ -45,13 +45,23 @@ func (this *Node) SendResponse(resp *rpc.Response) error {
 	return this.Send(resp)
 }
 
-func onClose(session net.Session, reason string) {
-	util.Logger().Infoln("onClose", reason)
+// todo 网络闪断
+func onClose(session dnet.Session, reason string) {
+	//util.Logger().Infoln("onClose", reason)
 	ctx := session.Context()
 	if ctx != nil {
 		n := ctx.(*Node)
 		n.session = nil
 		session.SetContext(nil)
+
+		util.Logger().Infoln(n.LogicAddr.Logic.String(), "onClose", reason)
+		tId := n.LogicAddr.Logic.Uint32()
+		delete(nodes, tId)
+
+		// 通知所有节点，节点离线
+		broadcast(&protocol.NodeLeave{
+			LogicAddr: tId,
+		})
 	}
 }
 
@@ -63,11 +73,12 @@ func onLogin(replyer *rpc.Replyer, arg interface{}) {
 	resp := &protocol.LoginResp{}
 	util.Logger().Infof("onLogin %v", req)
 
-	netAddr, err := net2.ResolveTCPAddr("tcp", netStr)
+	netAddr, err := net.ResolveTCPAddr("tcp", netStr)
 	if err != nil {
-		util.Logger().Errorf(err.Error())
 		resp.Msg = err.Error()
 		_ = replyer.Reply(resp, nil)
+		util.Logger().Errorf(err.Error())
+		session.Close(err.Error())
 		return
 	}
 
@@ -84,16 +95,20 @@ func onLogin(replyer *rpc.Replyer, arg interface{}) {
 		session.SetContext(n)
 
 		resp.Ok = true
-		util.Logger().Infof("add node %d \n", n.LogicAddr.Logic)
 		_ = replyer.Reply(resp, nil)
+		util.Logger().Infof("add node %d \n", n.LogicAddr.Logic)
 
 	} else {
+		// 已经有节点在该逻辑地址上启动。
+		// 可能出现情况：该逻辑地址已被占用，但新节点上线时原有节点网络闪断，导致这条请求合法。
 		if n.session != nil {
-			resp.Msg = "session is already connect"
-			util.Logger().Infof("node %d %s\n", n.LogicAddr.Logic, resp.GetMsg())
+			resp.Msg = fmt.Sprintf("logicAddr %s netAddr %s session is already connect\n", n.LogicAddr.Logic.String(), n.LogicAddr.NetString())
 			_ = replyer.Reply(resp, nil)
+			util.Logger().Infof(resp.GetMsg())
+			session.Close(resp.GetMsg())
 			return
 		}
+
 		n.session = session
 		n.LogicAddr.Net = netAddr
 		session.SetContext(n)
@@ -104,25 +119,26 @@ func onLogin(replyer *rpc.Replyer, arg interface{}) {
 
 	}
 
-	notify := &protocol.NotifyNodeInfo{
-		Nodes: []*protocol.NodeInfo{{
+	enter := &protocol.NodeEnter{
+		Node: &protocol.NodeInfo{
 			LogicAddr: logic,
 			NetAddr:   netAddr.String(),
-		}},
+		},
 	}
 	// 通知所有节点，新节点上线,除了自己
-	broadcast(notify, n.LogicAddr.Logic)
+	broadcast(enter, n.LogicAddr.Logic)
 
+	notify := &protocol.NotifyNodeInfo{
+		Nodes: make([]*protocol.NodeInfo, 0, len(nodes)),
+	}
 	for _, node := range nodes {
-		if node.LogicAddr.Logic != n.LogicAddr.Logic {
-			notify.Nodes = append(notify.Nodes, &protocol.NodeInfo{
-				LogicAddr: uint32(node.LogicAddr.Logic),
-				NetAddr:   node.LogicAddr.NetString(),
-			})
-		}
+		notify.Nodes = append(notify.Nodes, &protocol.NodeInfo{
+			LogicAddr: uint32(node.LogicAddr.Logic),
+			NetAddr:   node.LogicAddr.NetString(),
+		})
 	}
 	// 通知自己，有哪些节点在线,包括自己
 	_ = n.Send(ss.NewMessage(notify))
 }
 
-func onHeartbeat(session net.Session, msg *ss.Message) {}
+func onHeartbeat(session dnet.Session, msg *ss.Message) {}

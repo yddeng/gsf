@@ -1,6 +1,10 @@
 syntax = "proto3";
 option go_package = "gsf/protocol/cs/cspb";
 
-message echoToS {}
+message echoToS {
+    string msg = 1;
+}
 
-message echoToC {}
+message echoToC {
+    string msg = 1;
+}

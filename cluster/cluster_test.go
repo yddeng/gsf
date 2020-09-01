@@ -2,9 +2,15 @@ package cluster
 
 import (
 	"fmt"
+	"github.com/golang/protobuf/proto"
 	"github.com/yddeng/gsf/cluster/addr"
+	"github.com/yddeng/gsf/protocol/rpc/rpcpb"
+	"github.com/yddeng/gsf/protocol/ss"
+	"github.com/yddeng/gsf/protocol/ss/sspb"
 	"github.com/yddeng/gsf/util"
+	"github.com/yddeng/gsf/util/rpc"
 	"testing"
+	"time"
 )
 
 func TestLauncher(t *testing.T) {
@@ -19,6 +25,73 @@ func TestLauncher(t *testing.T) {
 	if err != nil {
 		fmt.Println(2, err)
 		return
+	}
+	select {}
+}
+
+func TestAsynCall1(t *testing.T) {
+	util.InitLogger("log", "asynCall1")
+	logic1, _ := addr.MakeAddr("1.1.1", "127.0.0.1:6547")
+	logic2, _ := addr.MakeAddr("1.1.2", "127.0.0.1:6548")
+
+	RegisterRPCMethod(&rpcpb.EchoReq{}, func(replyer *rpc.Replyer, req interface{}) {
+		msg := req.(*rpcpb.EchoReq)
+		fmt.Println(msg)
+
+		resp := &rpcpb.EchoResp{
+			Msg: msg.GetMsg(),
+		}
+		replyer.Reply(resp, nil)
+	})
+
+	err := Launcher("127.0.0.1:9874", logic1)
+	if err != nil {
+		fmt.Println(2, err)
+		return
+	}
+
+	// 超时断开连接，后重连
+	time.Sleep(time.Second * 40)
+	Post(logic2.Logic, &sspb.Echo{Msg: "hello"})
+	select {}
+}
+
+func TestAsynCall2(t *testing.T) {
+	util.InitLogger("log", "asynCall2")
+	logic1, _ := addr.MakeAddr("1.1.1", "127.0.0.1:6547")
+	logic2, _ := addr.MakeAddr("1.1.2", "127.0.0.1:6548")
+
+	RegisterRPCMethod(&rpcpb.EchoReq{}, func(replyer *rpc.Replyer, req interface{}) {
+		msg := req.(*rpcpb.EchoReq)
+		fmt.Println(msg)
+
+		resp := &rpcpb.EchoResp{
+			Msg: msg.GetMsg(),
+		}
+		replyer.Reply(resp, nil)
+	})
+	RegisterSSMethod(ss.Echo, func(from addr.LogicAddr, msg proto.Message) {
+		req := msg.(*sspb.Echo)
+		fmt.Println(req)
+	})
+
+	err := Launcher("127.0.0.1:9874", logic2)
+	if err != nil {
+		fmt.Println(2, err)
+		return
+	}
+
+	time.Sleep(time.Second)
+	err = AsynCall(logic1.Logic, &rpcpb.EchoReq{Msg: "hello"}, func(i interface{}, e error) {
+		if e != nil {
+			fmt.Println(e)
+			return
+		}
+		msg := i.(*rpcpb.EchoResp)
+		fmt.Println(msg)
+	})
+	if err != nil {
+		fmt.Println(err)
 	}
 	select {}
 }

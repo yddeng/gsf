@@ -1,77 +1,76 @@
 package cluster
 
 import (
+	"fmt"
+	"github.com/golang/protobuf/proto"
 	"github.com/yddeng/gsf/cluster/addr"
 	"github.com/yddeng/gsf/codec/ss"
-	protorpc "github.com/yddeng/gsf/protocol/rpc"
-	protoss "github.com/yddeng/gsf/protocol/ss"
 	"github.com/yddeng/gsf/util"
-	"github.com/yddeng/gsf/util/net"
-	"github.com/yddeng/gsf/util/queue"
-	"github.com/yddeng/gsf/util/rpc"
-	"time"
+	"net"
 )
-
-var (
-	eventQueue  *queue.EventQueue
-	endPoints   map[uint32]*EndPoint
-	selfPoint   *EndPoint
-	centerPoint *CenterPoint
-)
-
-func onClose(session net.Session, reason string) {
-
-}
 
 func Launcher(centerAddr string, self *addr.Addr) error {
-	l, err := net.NewTCPListener("tcp", self.NetString())
+	l, err := net.ListenTCP("tcp", self.Net)
 	if err != nil {
 		return err
 	}
 
-	Init()
-
 	connectCenter(centerAddr, self)
-	selfPoint = &EndPoint{logic: self}
+	selfPoint = &endpoint{logic: self}
 
-	// 集群内通信
-	l.Listen(func(session net.Session) {
-		util.Logger().Infoln("new client", session.RemoteAddr().String())
-		// 超时时间
-		session.SetTimeout(10*time.Second, 0)
-		session.SetCodec(ss.NewCodec(protoss.SS_SPACE, protorpc.REQ_SPACE, protorpc.RESP_SPACE))
-		session.SetCloseCallBack(func(reason string) {
-			onClose(session, reason)
-		})
-
-		err := session.Start(func(data interface{}, err error) {
+	go func() {
+		for {
+			conn, err := l.AcceptTCP()
 			if err != nil {
-				session.Close(err.Error())
-			} else {
-				eventQueue.Push(func() {
-					var err error
-					switch data.(type) {
-					case *ss.Message:
-						//dispatchMsg(session, data.(*ss.Message))
-					case *rpc.Request:
-						//err = rpcServer.OnRPCRequest(&Node{session: session}, data.(*rpc.Request))
-					case *rpc.Response:
-					}
-					if err != nil {
-						util.Logger().Errorf(err.Error())
-					}
-				})
+				if ne, ok := err.(net.Error); ok && ne.Temporary() {
+					continue
+				} else {
+					util.Logger().Errorln(err)
+					return
+				}
 			}
-		})
-		if err != nil {
-			util.Logger().Errorf("%s start session err: %s", session.RemoteAddr().String(), err)
+
+			// 新连接验证
+			go accept(conn)
 		}
-	})
+	}()
+
 	return nil
 }
 
-func Init() {
-	eventQueue = queue.NewEventQueue(1024)
-	eventQueue.Run(1)
-	endPoints = map[uint32]*EndPoint{}
+func Post(logic addr.LogicAddr, msg proto.Message) error {
+	end := endpoints.getEndpointByLogic(logic)
+	if end == nil {
+		return fmt.Errorf("%s is not found", logic.String())
+	}
+	return post(end, msg)
+}
+
+func post(end *endpoint, msg proto.Message) error {
+	end.Lock()
+	defer end.Unlock()
+	if end.session == nil {
+		end.postMsg = append(end.postMsg, msg)
+		dial(end)
+		return nil
+	}
+	return end.send(ss.NewMessage(msg))
+}
+
+func RegisterSSMethod(cmd uint16, h func(from addr.LogicAddr, msg proto.Message)) {
+	_, ok := ssHandler[cmd]
+	if ok {
+		panic(fmt.Sprintf("register ss method cmd %d already registed", cmd))
+	}
+	ssHandler[cmd] = h
+}
+
+func dispatchSS(from addr.LogicAddr, msg *ss.Message) error {
+	cmd := msg.GetCmd()
+	h, ok := ssHandler[cmd]
+	if ok {
+		h(from, msg.GetData().(proto.Message))
+		return nil
+	}
+	return fmt.Errorf("dispatchSS invailed cmd %d ", cmd)
 }

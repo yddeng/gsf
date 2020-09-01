@@ -24,9 +24,9 @@ message notifyNodeInfo {
 }
 
 message nodeLeave {
-	repeated uint32 nodes = 1;
+	uint32 logicAddr = 1;
 }
 
-message nodeChange {
-	repeated nodeInfo nodes = 1;
+message nodeEnter {
+	nodeInfo node = 1;
 }

@@ -48,6 +48,10 @@ func MakeAddr(logic string, tcpAddr string) (*Addr, error) {
 	}, nil
 }
 
+func (this LogicAddr) Uint32() uint32 {
+	return uint32(this)
+}
+
 func (this LogicAddr) Group() uint32 {
 	return (uint32(this) & GroupMask) >> 18
 }

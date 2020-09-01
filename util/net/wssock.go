@@ -29,7 +29,7 @@ type WSConn struct {
 	lock sync.Mutex
 }
 
-func newWSConn(conn *websocket.Conn) *WSConn {
+func NewWSConn(conn *websocket.Conn) *WSConn {
 	return &WSConn{
 		conn:        conn,
 		sendBufChan: make(chan []byte, sendBufChanSize),
@@ -265,7 +265,7 @@ func (this *WSListener) Listen(newClient func(Session)) error {
 			log.Printf("wssocket Upgrade failed:%s\n", err.Error())
 			return
 		}
-		newClient(newWSConn(c))
+		newClient(NewWSConn(c))
 	})
 
 	go func() {
@@ -287,5 +287,5 @@ func DialWS(addr, path string, timeout time.Duration) (Session, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newWSConn(conn), nil
+	return NewWSConn(conn), nil
 }

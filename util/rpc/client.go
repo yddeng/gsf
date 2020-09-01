@@ -15,8 +15,6 @@ type Call struct {
 	timer    *time.Timer
 }
 
-var timeout = 8 * time.Second
-
 type Client struct {
 	reqNo   uint64   //请求号
 	pending sync.Map //map[uint64]*Call
@@ -25,7 +23,7 @@ type Client struct {
 /*
  异步请求
 */
-func (client *Client) AsynCall(channel RPCChannel, method string, data interface{}, callback func(interface{}, error)) error {
+func (client *Client) AsynCall(channel RPCChannel, method string, data interface{}, timeout time.Duration, callback func(interface{}, error)) error {
 	if callback == nil {
 		return errors.New("callback == nil")
 	}

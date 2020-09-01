@@ -31,7 +31,7 @@ type TCPConn struct {
 	lock sync.Mutex
 }
 
-func newTCPConn(conn *net.TCPConn) *TCPConn {
+func NewTCPConn(conn *net.TCPConn) *TCPConn {
 	return &TCPConn{
 		conn:        conn,
 		sendBufChan: make(chan []byte, sendBufChanSize),
@@ -274,7 +274,7 @@ func (l *TCPListener) Listen(newClient func(session Session)) error {
 					return
 				}
 			}
-			newClient(newTCPConn(conn.(*net.TCPConn)))
+			newClient(NewTCPConn(conn.(*net.TCPConn)))
 		}
 	}()
 
@@ -304,5 +304,5 @@ func DialTCP(network, addr string, timeout time.Duration) (Session, error) {
 		return nil, err
 	}
 
-	return newTCPConn(conn.(*net.TCPConn)), nil
+	return NewTCPConn(conn.(*net.TCPConn)), nil
 }

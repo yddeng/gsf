@@ -14,7 +14,7 @@ const (
 	HeartbeatCmd      = 3
 	NotifyNodeInfoCmd = 4
 	NodeLeaveCmd      = 5
-	NodeChangeCmd     = 6
+	NodeEnterCmd      = 6
 )
 
 func init() {
@@ -23,5 +23,5 @@ func init() {
 	pb.Register("center_ss", &Heartbeat{}, 3)
 	pb.Register("center_ss", &NotifyNodeInfo{}, 4)
 	pb.Register("center_ss", &NodeLeave{}, 5)
-	pb.Register("center_ss", &NodeChange{}, 6)
+	pb.Register("center_ss", &NodeEnter{}, 6)
 }

@@ -1,6 +1,10 @@
 syntax = "proto3";
 option go_package = "gsf/protocol/rpc/rpcpb";
 
-message echoReq {}
+message echoReq {
+    string msg = 1;
+}
 
-message echoResp {}
+message echoResp {
+    string msg = 1;
+}
