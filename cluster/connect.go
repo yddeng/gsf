@@ -223,17 +223,14 @@ func connectOk(end *endpoint, session dnet.Session) {
 		}
 	})
 
-	ssMsg := end.ssMsg
-	end.ssMsg = end.ssMsg[0:0]
-	reqMsg := end.reqMsg
-	end.reqMsg = end.reqMsg[0:0]
-	end.Unlock()
-
 	// 将消息发送出去
-	for _, msg := range ssMsg {
+	for _, msg := range end.ssMsg {
 		_ = end.send(msg)
 	}
-	for _, req := range reqMsg {
+	for _, req := range end.reqMsg {
 		_ = end.send(req)
 	}
+	end.ssMsg = end.ssMsg[0:0]
+	end.reqMsg = end.reqMsg[0:0]
+	end.Unlock()
 }
