@@ -96,6 +96,16 @@ type endpointGroup struct {
 	*sync.Mutex
 }
 
+func (this *endpointGroup) rangeEach(f func(end *endpoint) bool) {
+	this.Lock()
+	defer this.Unlock()
+	for _, end := range this.logic2End {
+		if !f(end) {
+			break
+		}
+	}
+}
+
 func (this *endpointGroup) addEndpoint(logic *addr.Addr) {
 	this.Lock()
 	defer this.Unlock()

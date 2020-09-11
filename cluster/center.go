@@ -158,12 +158,17 @@ func (this *centerPoint) dispatchMsg(session dnet.Session, msg *ss.Message) erro
 	return fmt.Errorf("dispatchMsg invailed cmd %d in nameSpace %s", cmd, protocol.SS_SPACE)
 }
 
-// 通知自己有哪些在线
+// 通知自己有哪些在线(新增节点，删除节点)
 func onNotifyNodeInfo(session dnet.Session, msg *ss.Message) {
 	req := msg.GetData().(*protocol.NotifyNodeInfo)
 	util.Logger().Infof("onNotifyNodeInfo %v", req)
+
+	existNode := map[addr.LogicAddr]struct{}{} // center 上现存的节点
+
+	// 添加或修改 在 center 上存在的节点
 	for _, v := range req.GetNodes() {
 		logicAddr := addr.LogicAddr(v.GetLogicAddr())
+		existNode[logicAddr] = struct{}{}
 		netAddr, err := net.ResolveTCPAddr("tcp", v.GetNetAddr())
 		if err != nil {
 			util.Logger().Errorf("endpoint %s netAddr err: %s", logicAddr.String(), err)
@@ -171,6 +176,7 @@ func onNotifyNodeInfo(session dnet.Session, msg *ss.Message) {
 		}
 		end := endpoints.getEndpointByLogic(logicAddr)
 		if end != nil {
+			// 已存在节点，继续验证地址
 			end.Lock()
 			// 新节点上来，替换原有连接
 			if end.logic.NetString() != netAddr.String() {
@@ -181,6 +187,7 @@ func onNotifyNodeInfo(session dnet.Session, msg *ss.Message) {
 			}
 			end.Unlock()
 		} else {
+			// 不存在节点，新增
 			endpoints.addEndpoint(&addr.Addr{
 				Logic: logicAddr,
 				Net:   netAddr,
@@ -188,6 +195,18 @@ func onNotifyNodeInfo(session dnet.Session, msg *ss.Message) {
 		}
 	}
 
+	// 移除本地在 center 上不存在的节点
+	needRmNode := map[addr.LogicAddr]struct{}{}
+	endpoints.rangeEach(func(end *endpoint) bool {
+		logicAddr := end.logic.Logic
+		if _, ok := existNode[logicAddr]; !ok {
+			needRmNode[logicAddr] = struct{}{}
+		}
+		return true
+	})
+	for logicAddr := range needRmNode {
+		endpoints.removeEndpoint(logicAddr)
+	}
 }
 
 func onNodeLeave(session dnet.Session, msg *ss.Message) {
