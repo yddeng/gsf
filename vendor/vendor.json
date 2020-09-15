@@ -3,16 +3,52 @@
 	"ignore": "test",
 	"package": [
 		{
+			"checksumSHA1": "Pc2ORQp+VY3Un/dkh4QwLC7R6lE=",
+			"path": "github.com/BurntSushi/toml",
+			"revision": "3012a1dbe2e4bd1391d42b32f0577cb7bbc7f005",
+			"revisionTime": "2018-08-15T10:47:33Z"
+		},
+		{
 			"checksumSHA1": "Q3FteGbNvRRUMJqbYbmrcBd2DMo=",
 			"path": "github.com/golang/protobuf/proto",
 			"revision": "ed6926b37a637426117ccab59282c3839528a700",
 			"revisionTime": "2019-10-22T19:55:53Z"
 		},
 		{
-			"checksumSHA1": "ajAqUByI39Sfm99F/ZNOguPP3Mk=",
-			"path": "github.com/gorilla/websocket",
-			"revision": "c3e18be99d19e6b3e8f1559eea2c161a665c4b6b",
-			"revisionTime": "2019-08-25T01:20:11Z"
+			"checksumSHA1": "j1fgU6Kd4wSEeo5oT5DrdWotttA=",
+			"path": "github.com/yddeng/dnet",
+			"revision": "d71f4df5996dd0249aa06d80288f2f6c2e479308",
+			"revisionTime": "2020-09-15T07:28:44Z"
+		},
+		{
+			"checksumSHA1": "7tBrbjcIIhAZAnZivhnfQwLdgcw=",
+			"path": "github.com/yddeng/dnet/drpc",
+			"revision": "d71f4df5996dd0249aa06d80288f2f6c2e479308",
+			"revisionTime": "2020-09-15T07:28:44Z"
+		},
+		{
+			"checksumSHA1": "OU9dM3kcO7NWjCqzteg2VF66Yj4=",
+			"path": "github.com/yddeng/dnet/dtcp",
+			"revision": "d71f4df5996dd0249aa06d80288f2f6c2e479308",
+			"revisionTime": "2020-09-15T07:28:44Z"
+		},
+		{
+			"checksumSHA1": "GxSEErp6ZYKFbNeuHdLmq4nxjRM=",
+			"path": "github.com/yddeng/dutil/buffer",
+			"revision": "3eb62df52d87a6842d1c31a148215ac04feeaaae",
+			"revisionTime": "2020-09-15T06:46:50Z"
+		},
+		{
+			"checksumSHA1": "aMNoNqpqK4LXpgNq9mJOBpdw7hA=",
+			"path": "github.com/yddeng/dutil/log",
+			"revision": "3eb62df52d87a6842d1c31a148215ac04feeaaae",
+			"revisionTime": "2020-09-15T06:46:50Z"
+		},
+		{
+			"checksumSHA1": "Upp9QLSdIW7+fZfD0qSDt+IEXSA=",
+			"path": "github.com/yddeng/dutil/queue",
+			"revision": "3eb62df52d87a6842d1c31a148215ac04feeaaae",
+			"revisionTime": "2020-09-15T06:46:50Z"
 		}
 	],
 	"rootPath": "github.com/yddeng/gsf"
