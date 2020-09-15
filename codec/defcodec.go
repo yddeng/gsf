@@ -2,7 +2,7 @@ package codec
 
 import (
 	"fmt"
-	"github.com/yddeng/gsf/util/buffer"
+	"github.com/yddeng/dutil/buffer"
 	"io"
 	"reflect"
 )

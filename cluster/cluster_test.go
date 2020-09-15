@@ -3,12 +3,12 @@ package cluster
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/yddeng/dnet/drpc"
 	"github.com/yddeng/gsf/cluster/addr"
 	"github.com/yddeng/gsf/protocol/rpc/rpcpb"
 	"github.com/yddeng/gsf/protocol/ss"
 	"github.com/yddeng/gsf/protocol/ss/sspb"
 	"github.com/yddeng/gsf/util"
-	"github.com/yddeng/gsf/util/rpc"
 	"testing"
 	"time"
 )
@@ -34,7 +34,7 @@ func TestAsynCall1(t *testing.T) {
 	logic1, _ := addr.MakeAddr("1.1.1", "127.0.0.1:6547")
 	logic2, _ := addr.MakeAddr("1.1.2", "127.0.0.1:6548")
 
-	RegisterRPCMethod(&rpcpb.EchoReq{}, func(replyer *rpc.Replyer, req interface{}) {
+	RegisterRPCMethod(&rpcpb.EchoReq{}, func(replyer *drpc.Replyer, req interface{}) {
 		msg := req.(*rpcpb.EchoReq)
 		fmt.Println(msg)
 
@@ -84,7 +84,7 @@ func TestAsynCall2(t *testing.T) {
 	logic1, _ := addr.MakeAddr("1.1.1", "127.0.0.1:6547")
 	logic2, _ := addr.MakeAddr("1.1.2", "127.0.0.1:6548")
 
-	RegisterRPCMethod(&rpcpb.EchoReq{}, func(replyer *rpc.Replyer, req interface{}) {
+	RegisterRPCMethod(&rpcpb.EchoReq{}, func(replyer *drpc.Replyer, req interface{}) {
 		msg := req.(*rpcpb.EchoReq)
 		fmt.Println(msg)
 

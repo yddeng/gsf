@@ -3,16 +3,18 @@ package cluster
 import (
 	"encoding/binary"
 	"fmt"
+	"github.com/yddeng/dnet"
+	"github.com/yddeng/dnet/drpc"
+	"github.com/yddeng/dnet/dtcp"
+	"github.com/yddeng/dutil/buffer"
 	"github.com/yddeng/gsf/cluster/addr"
 	"github.com/yddeng/gsf/codec/ss"
 	protorpc "github.com/yddeng/gsf/protocol/rpc"
 	protoss "github.com/yddeng/gsf/protocol/ss"
 	"github.com/yddeng/gsf/util"
-	"github.com/yddeng/gsf/util/buffer"
-	dnet "github.com/yddeng/gsf/util/net"
-	"github.com/yddeng/gsf/util/rpc"
 	"io"
 	"net"
+	"reflect"
 	"time"
 )
 
@@ -79,7 +81,7 @@ func dial(end *endpoint) {
 				dialFailed(end, fmt.Errorf("code = %d", code))
 				return
 			} else {
-				session := dnet.NewTCPConn(conn)
+				session := dtcp.NewTCPConn(conn)
 				connectOk(end, session)
 			}
 
@@ -113,7 +115,7 @@ func dialFailed(end *endpoint, err error) {
 
 			eventQueue.Push(func() {
 				for _, req := range reqMsg {
-					_ = rpcMgr.rpcClient.OnRPCResponse(&rpc.Response{
+					_ = rpcMgr.rpcClient.OnRPCResponse(&drpc.Response{
 						SeqNo: req.SeqNo,
 						Data:  nil,
 						Err:   fmt.Errorf("connect logicAddr %s failed", logicAddr),
@@ -168,7 +170,7 @@ func accept(conn *net.TCPConn) {
 	conn.Write(codeOk)
 
 	// 连接成功
-	session := dnet.NewTCPConn(conn)
+	session := dtcp.NewTCPConn(conn)
 	connectOk(end, session)
 }
 
@@ -212,10 +214,12 @@ func connectOk(end *endpoint, session dnet.Session) {
 					end.Lock()
 					err = dispatchSS(end.logic.Logic, data.(*ss.Message))
 					end.Unlock()
-				case *rpc.Request:
-					err = rpcMgr.rpcServer.OnRPCRequest(end, data.(*rpc.Request))
-				case *rpc.Response:
-					err = rpcMgr.rpcClient.OnRPCResponse(data.(*rpc.Response))
+				case *drpc.Request:
+					err = rpcMgr.rpcServer.OnRPCRequest(end, data.(*drpc.Request))
+				case *drpc.Response:
+					err = rpcMgr.rpcClient.OnRPCResponse(data.(*drpc.Response))
+				default:
+					err = fmt.Errorf("invalid type:%s", reflect.TypeOf(data).String())
 				}
 				if err != nil {
 					util.Logger().Errorf(err.Error())

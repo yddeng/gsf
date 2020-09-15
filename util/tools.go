@@ -1,7 +1,7 @@
 package util
 
 import (
-	"github.com/yddeng/gsf/util/queue"
+	"github.com/yddeng/dutil/queue"
 	"sync"
 	"sync/atomic"
 	"time"

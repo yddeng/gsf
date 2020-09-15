@@ -1,7 +1,7 @@
 package util
 
 import (
-	"github.com/yddeng/gsf/util/log"
+	"github.com/yddeng/dutil/log"
 )
 
 var logger *log.Logger

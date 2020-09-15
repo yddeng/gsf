@@ -3,11 +3,11 @@ package ss
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/yddeng/dnet/drpc"
+	"github.com/yddeng/dutil/buffer"
 	"github.com/yddeng/gsf/codec/pb"
 	_ "github.com/yddeng/gsf/protocol/rpc"
 	_ "github.com/yddeng/gsf/protocol/ss"
-	"github.com/yddeng/gsf/util/buffer"
-	"github.com/yddeng/gsf/util/rpc"
 	"io"
 	"reflect"
 )
@@ -127,14 +127,14 @@ func (decoder *Codec) unPack() (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		msg = &rpc.Request{
+		msg = &drpc.Request{
 			SeqNo:    decoder.seqNo,
 			Method:   pb.GetNameById(decoder.req, decoder.cmd),
 			Data:     m,
 			NeedResp: true,
 		}
 	case RPC_Response:
-		resp := &rpc.Response{SeqNo: decoder.seqNo}
+		resp := &drpc.Response{SeqNo: decoder.seqNo}
 		if decoder.tt == RPC_Resp_Error {
 			resp.Err = fmt.Errorf(string(data))
 
@@ -171,8 +171,8 @@ func (encoder *Codec) Encode(o interface{}) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-	case *rpc.Request:
-		msg := o.(*rpc.Request)
+	case *drpc.Request:
+		msg := o.(*drpc.Request)
 		tt = RPC_Request
 		seqNo = msg.SeqNo
 		cmd, data, err = pb.Marshal(encoder.req, msg.Data)
@@ -180,8 +180,8 @@ func (encoder *Codec) Encode(o interface{}) ([]byte, error) {
 			return nil, err
 		}
 
-	case *rpc.Response:
-		msg := o.(*rpc.Response)
+	case *drpc.Response:
+		msg := o.(*drpc.Response)
 		if msg.Err != nil {
 			tt = RPC_Resp_Error
 			data = []byte(msg.Err.Error())

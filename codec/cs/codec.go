@@ -3,9 +3,9 @@ package cs
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/yddeng/dutil/buffer"
 	"github.com/yddeng/gsf/codec/pb"
 	_ "github.com/yddeng/gsf/protocol/cs"
-	"github.com/yddeng/gsf/util/buffer"
 	"io"
 	"reflect"
 )

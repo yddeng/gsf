@@ -3,13 +3,15 @@ package cluster
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/yddeng/dnet"
+	"github.com/yddeng/dnet/drpc"
+	"github.com/yddeng/dnet/dtcp"
 	"github.com/yddeng/gsf/center/protocol"
 	"github.com/yddeng/gsf/cluster/addr"
 	"github.com/yddeng/gsf/codec/ss"
 	"github.com/yddeng/gsf/util"
-	dnet "github.com/yddeng/gsf/util/net"
-	"github.com/yddeng/gsf/util/rpc"
 	"net"
+	"reflect"
 	"time"
 )
 
@@ -19,7 +21,7 @@ type centerPoint struct {
 	dialing    bool
 	session    dnet.Session
 	handler    map[uint16]func(dnet.Session, *ss.Message)
-	rpcClient  *rpc.Client
+	rpcClient  *drpc.Client
 
 	heartbeatTicker *time.Ticker
 	heartbeat       *ss.Message
@@ -35,7 +37,7 @@ func connectCenter(centerAddr string, self *addr.Addr) {
 			protocol.NodeLeaveCmd:      onNodeLeave,
 			protocol.NodeEnterCmd:      onNodeEnter,
 		},
-		rpcClient: rpc.NewClient(),
+		rpcClient: drpc.NewClient(),
 		heartbeat: ss.NewMessage(&protocol.Heartbeat{}),
 	}
 
@@ -51,7 +53,7 @@ func (this *centerPoint) dial() {
 
 	go func() {
 		for {
-			session, err := dnet.DialTCP("tcp", this.centerAddr, time.Second*5)
+			session, err := dtcp.DialTCP("tcp", this.centerAddr, time.Second*5)
 			if nil == err && session != nil {
 				this.onConnected(session)
 				return
@@ -90,9 +92,11 @@ func (this *centerPoint) onConnected(session dnet.Session) {
 					switch data.(type) {
 					case *ss.Message:
 						err = this.dispatchMsg(session, data.(*ss.Message))
-					case *rpc.Request:
-					case *rpc.Response:
-						err = this.rpcClient.OnRPCResponse(data.(*rpc.Response))
+					//case *drpc.Request:
+					case *drpc.Response:
+						err = this.rpcClient.OnRPCResponse(data.(*drpc.Response))
+					default:
+						err = fmt.Errorf("invalid type:%s", reflect.TypeOf(data).String())
 					}
 					if err != nil {
 						util.Logger().Errorf(err.Error())
@@ -141,11 +145,11 @@ func (this *centerPoint) send(msg interface{}) error {
 	return this.session.Send(msg)
 }
 
-func (this *centerPoint) SendRequest(req *rpc.Request) error {
+func (this *centerPoint) SendRequest(req *drpc.Request) error {
 	return this.send(req)
 }
 
-func (this *centerPoint) SendResponse(resp *rpc.Response) error {
+func (this *centerPoint) SendResponse(resp *drpc.Response) error {
 	return this.send(resp)
 }
 

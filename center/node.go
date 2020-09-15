@@ -3,12 +3,12 @@ package center
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/yddeng/dnet"
+	"github.com/yddeng/dnet/drpc"
 	"github.com/yddeng/gsf/center/protocol"
 	"github.com/yddeng/gsf/cluster/addr"
 	"github.com/yddeng/gsf/codec/ss"
 	"github.com/yddeng/gsf/util"
-	dnet "github.com/yddeng/gsf/util/net"
-	"github.com/yddeng/gsf/util/rpc"
 	"net"
 )
 
@@ -37,11 +37,11 @@ func (this *Node) Send(o interface{}) error {
 	return this.session.Send(o)
 }
 
-func (this *Node) SendRequest(req *rpc.Request) error {
+func (this *Node) SendRequest(req *drpc.Request) error {
 	return this.Send(req)
 }
 
-func (this *Node) SendResponse(resp *rpc.Response) error {
+func (this *Node) SendResponse(resp *drpc.Response) error {
 	return this.Send(resp)
 }
 
@@ -65,7 +65,7 @@ func onClose(session dnet.Session, reason string) {
 	}
 }
 
-func onLogin(replyer *rpc.Replyer, arg interface{}) {
+func onLogin(replyer *drpc.Replyer, arg interface{}) {
 	req := arg.(*protocol.LoginReq)
 	logic := req.GetNode().GetLogicAddr()
 	netStr := req.GetNode().GetNetAddr()

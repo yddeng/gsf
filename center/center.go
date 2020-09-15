@@ -1,13 +1,16 @@
 package center
 
 import (
+	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/yddeng/dnet"
+	"github.com/yddeng/dnet/drpc"
+	"github.com/yddeng/dnet/dtcp"
+	"github.com/yddeng/dutil/queue"
 	"github.com/yddeng/gsf/center/protocol"
 	"github.com/yddeng/gsf/codec/ss"
 	"github.com/yddeng/gsf/util"
-	dnet "github.com/yddeng/gsf/util/net"
-	"github.com/yddeng/gsf/util/queue"
-	"github.com/yddeng/gsf/util/rpc"
+	"reflect"
 	"time"
 )
 
@@ -16,7 +19,7 @@ type Handler func(dnet.Session, *ss.Message)
 var (
 	msgHandlers      map[uint16]Handler
 	eventQueue       *queue.EventQueue
-	rpcServer        *rpc.Server
+	rpcServer        *drpc.Server
 	nodes            map[uint32]*Node
 	heartbeatTimeout = time.Second * 10
 )
@@ -41,7 +44,7 @@ func dispatchMsg(session dnet.Session, msg *ss.Message) {
 }
 
 func Launch(netAddr string) {
-	l := util.Must(dnet.NewTCPListener("tcp", netAddr)).(*dnet.TCPListener)
+	l := util.Must(dtcp.NewTCPListener("tcp", netAddr)).(*dtcp.TCPListener)
 
 	Init()
 
@@ -62,9 +65,11 @@ func Launch(netAddr string) {
 						switch data.(type) {
 						case *ss.Message:
 							dispatchMsg(session, data.(*ss.Message))
-						case *rpc.Request:
-							err = rpcServer.OnRPCRequest(&Node{session: session}, data.(*rpc.Request))
-						case *rpc.Response:
+						case *drpc.Request:
+							err = rpcServer.OnRPCRequest(&Node{session: session}, data.(*drpc.Request))
+						//case *drpc.Response:
+						default:
+							err = fmt.Errorf("invalid type:%s", reflect.TypeOf(data).String())
 						}
 						if err != nil {
 							util.Logger().Errorf(err.Error())
@@ -82,7 +87,7 @@ func Launch(netAddr string) {
 func Init() {
 	msgHandlers = map[uint16]Handler{}
 	nodes = map[uint32]*Node{}
-	rpcServer = rpc.NewServer()
+	rpcServer = drpc.NewServer()
 	eventQueue = queue.NewEventQueue(1024)
 	eventQueue.Run(1)
 

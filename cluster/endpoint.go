@@ -1,14 +1,15 @@
 package cluster
 
 import (
+	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/yddeng/dnet"
+	"github.com/yddeng/dnet/drpc"
 	"github.com/yddeng/gsf/cluster/addr"
 	"github.com/yddeng/gsf/codec/pb"
 	"github.com/yddeng/gsf/codec/ss"
 	protoss "github.com/yddeng/gsf/protocol/ss"
 	"github.com/yddeng/gsf/util"
-	dnet "github.com/yddeng/gsf/util/net"
-	"github.com/yddeng/gsf/util/rpc"
 	"reflect"
 	"sync"
 	"time"
@@ -21,7 +22,7 @@ type endpoint struct {
 	dialTimeout time.Time
 
 	ssMsg  []*ss.Message
-	reqMsg []*rpc.Request
+	reqMsg []*drpc.Request
 
 	*sync.Mutex
 }
@@ -38,12 +39,12 @@ func newEndpoint(logic *addr.Addr) *endpoint {
 		logic:       logic,
 		dialTimeout: time.Time{},
 		ssMsg:       make([]*ss.Message, 0, 4),
-		reqMsg:      make([]*rpc.Request, 0, 4),
+		reqMsg:      make([]*drpc.Request, 0, 4),
 		Mutex:       new(sync.Mutex),
 	}
 }
 
-// 传入 *ss.Message, *rpc.Request, *rpc.Response
+// 传入 *ss.Message, *drpc.Request, *drpc.Response
 func (this *endpoint) send(msg interface{}) error {
 	// 发送给自己的消息，直接处理
 	if this.logic.Logic == selfPoint.logic.Logic {
@@ -54,10 +55,12 @@ func (this *endpoint) send(msg interface{}) error {
 				req := msg.(*ss.Message)
 				req.SetCmd(pb.GetIdByName(protoss.SS_SPACE, proto.MessageName(req.GetData())))
 				err = dispatchSS(selfPoint.logic.Logic, msg.(*ss.Message))
-			case *rpc.Request:
-				err = rpcMgr.rpcServer.OnRPCRequest(selfPoint, msg.(*rpc.Request))
-			case *rpc.Response:
-				err = rpcMgr.rpcClient.OnRPCResponse(msg.(*rpc.Response))
+			case *drpc.Request:
+				err = rpcMgr.rpcServer.OnRPCRequest(selfPoint, msg.(*drpc.Request))
+			case *drpc.Response:
+				err = rpcMgr.rpcClient.OnRPCResponse(msg.(*drpc.Response))
+			default:
+				err = fmt.Errorf("invalid type:%s", reflect.TypeOf(msg).String())
 			}
 			if err != nil {
 				util.Logger().Errorf(err.Error())
@@ -71,10 +74,10 @@ func (this *endpoint) send(msg interface{}) error {
 		switch msg.(type) {
 		case *ss.Message:
 			this.ssMsg = append(this.ssMsg, msg.(*ss.Message))
-		case *rpc.Request:
-			this.reqMsg = append(this.reqMsg, msg.(*rpc.Request))
+		case *drpc.Request:
+			this.reqMsg = append(this.reqMsg, msg.(*drpc.Request))
 		default:
-			util.Logger().Debugf("pending msg type = %s", reflect.TypeOf(msg).String())
+			util.Logger().Debugf("pending invalid type:%s", reflect.TypeOf(msg).String())
 		}
 		dial(this)
 		return nil //fmt.Errorf("%s session is nil", this.logic.Logic.String())
@@ -82,11 +85,11 @@ func (this *endpoint) send(msg interface{}) error {
 	return this.session.Send(msg)
 }
 
-func (this *endpoint) SendRequest(req *rpc.Request) error {
+func (this *endpoint) SendRequest(req *drpc.Request) error {
 	return this.send(req)
 }
 
-func (this *endpoint) SendResponse(resp *rpc.Response) error {
+func (this *endpoint) SendResponse(resp *drpc.Response) error {
 	return this.send(resp)
 }
 

@@ -2,9 +2,9 @@ package cluster
 
 import (
 	"github.com/golang/protobuf/proto"
+	"github.com/yddeng/dnet/drpc"
+	"github.com/yddeng/dutil/queue"
 	"github.com/yddeng/gsf/cluster/addr"
-	"github.com/yddeng/gsf/util/queue"
-	"github.com/yddeng/gsf/util/rpc"
 	"sync"
 	"time"
 )
@@ -22,8 +22,8 @@ var (
 		Mutex:     new(sync.Mutex),
 	}
 	rpcMgr = &rpcManager{
-		rpcServer: rpc.NewServer(),
-		rpcClient: rpc.NewClient(),
+		rpcServer: drpc.NewServer(),
+		rpcClient: drpc.NewClient(),
 	}
 
 	heartbeatTime = time.Second * 30 // 集群节点间超时时间间隔
