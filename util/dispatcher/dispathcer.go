@@ -2,7 +2,7 @@ package dispatcher
 
 import (
 	"github.com/golang/protobuf/proto"
-	"github.com/yddeng/gsf/util/net"
+	"github.com/yddeng/dnet"
 )
 
 /*
@@ -10,7 +10,7 @@ import (
  每一条协议注册一个处理函数
 */
 
-type Handler func(net.Session, proto.Message)
+type Handler func(dnet.Session, proto.Message)
 
 type Dispatcher struct {
 	handlers map[uint16]Handler
@@ -31,7 +31,7 @@ func (this *Dispatcher) Registerk(cmd uint16, callback Handler) {
 	this.handlers[cmd] = callback
 }
 
-func (this *Dispatcher) Dispatch(session net.Session, cmd uint16, msg proto.Message) {
+func (this *Dispatcher) Dispatch(session dnet.Session, cmd uint16, msg proto.Message) {
 	if nil != msg {
 		handler, ok := this.handlers[cmd]
 		if ok {

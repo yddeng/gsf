@@ -39,6 +39,12 @@
 			"revisionTime": "2020-09-15T06:46:50Z"
 		},
 		{
+			"checksumSHA1": "urE86yz06BvmgUeIpyPiIiH7UnQ=",
+			"path": "github.com/yddeng/dutil/heap",
+			"revision": "3eb62df52d87a6842d1c31a148215ac04feeaaae",
+			"revisionTime": "2020-09-15T06:46:50Z"
+		},
+		{
 			"checksumSHA1": "aMNoNqpqK4LXpgNq9mJOBpdw7hA=",
 			"path": "github.com/yddeng/dutil/log",
 			"revision": "3eb62df52d87a6842d1c31a148215ac04feeaaae",

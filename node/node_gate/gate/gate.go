@@ -2,21 +2,22 @@ package gate
 
 import (
 	"github.com/golang/protobuf/proto"
+	"github.com/yddeng/dnet"
+	"github.com/yddeng/dnet/dtcp"
 	"github.com/yddeng/gsf/cluster"
 	"github.com/yddeng/gsf/cluster/addr"
 	"github.com/yddeng/gsf/protocol/ss"
 	"github.com/yddeng/gsf/util"
-	"github.com/yddeng/gsf/util/net"
 )
 
 func Launch(externalAddr string) error {
-	listener, err := net.NewTCPListener("tcp", externalAddr)
+	listener, err := dtcp.NewTCPListener("tcp", externalAddr)
 	if err != nil {
 		util.Logger().Errorln(err)
 		return err
 	}
 
-	_ = listener.Listen(func(session net.Session) {
+	_ = listener.Listen(func(session dnet.Session) {
 
 	})
 

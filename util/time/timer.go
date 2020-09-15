@@ -1,8 +1,8 @@
 package time
 
 import (
-	"github.com/yddeng/gsf/util/heap"
-	"github.com/yddeng/gsf/util/queue"
+	"github.com/yddeng/dutil/heap"
+	"github.com/yddeng/dutil/queue"
 	"sync"
 	"sync/atomic"
 	"time"

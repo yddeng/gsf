@@ -1,7 +1,9 @@
 package gate
 
-import "github.com/yddeng/gsf/util/net"
+import (
+	"github.com/yddeng/dnet"
+)
 
 type Client struct {
-	session net.Session
+	session dnet.Session
 }
