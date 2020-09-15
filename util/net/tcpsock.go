@@ -15,26 +15,32 @@ const (
 const sendBufChanSize = 1024
 
 type TCPConn struct {
-	flag         byte
+	state        byte
 	conn         *net.TCPConn
-	ctx          interface{}   //用户数据
+	ctx          interface{}   // 用户数据
 	readTimeout  time.Duration // 读超时
 	writeTimeout time.Duration // 写超时
 
-	codec       Codec       //编解码器
-	sendBufChan chan []byte //发送队列
+	codec Codec // 编解码器
 
-	msgCallback   func(interface{}, error) //消息回调
-	closeCallback func(string)             //关闭连接回调
-	closeReason   string                   //关闭原因
+	sendNotifyCh  chan struct{}    // 发送消息通知
+	sendBufferCh  chan []byte      // 发送队列
+	pendingEncode chan interface{} // 待编码发送的消息
+
+	msgCallback func(interface{}, error) // 消息回调
+
+	closeCallback func(session Session, reason string) // 关闭连接回调
+	closeReason   string                               // 关闭原因
 
 	lock sync.Mutex
 }
 
 func NewTCPConn(conn *net.TCPConn) *TCPConn {
 	return &TCPConn{
-		conn:        conn,
-		sendBufChan: make(chan []byte, sendBufChanSize),
+		conn:          conn,
+		sendNotifyCh:  make(chan struct{}, 1),
+		sendBufferCh:  make(chan []byte, sendBufChanSize),
+		pendingEncode: make(chan interface{}, sendBufChanSize),
 	}
 }
 
@@ -66,7 +72,7 @@ func (this *TCPConn) SetCodec(codec Codec) {
 	this.lock.Unlock()
 }
 
-func (this *TCPConn) SetCloseCallBack(closeCallback func(reason string)) {
+func (this *TCPConn) SetCloseCallBack(closeCallback func(session Session, reason string)) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 	this.closeCallback = closeCallback
@@ -84,6 +90,19 @@ func (this *TCPConn) Context() interface{} {
 	return this.ctx
 }
 
+func (this *TCPConn) getCodec() Codec {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	return this.codec
+}
+
+func (this *TCPConn) getTimeout() (readTimeout, writeTimeout time.Duration) {
+	this.lock.Lock()
+	readTimeout, writeTimeout = this.readTimeout, this.writeTimeout
+	this.lock.Unlock()
+	return
+}
+
 //开启消息处理
 func (this *TCPConn) Start(msgCb func(interface{}, error)) error {
 	if msgCb == nil {
@@ -91,10 +110,10 @@ func (this *TCPConn) Start(msgCb func(interface{}, error)) error {
 	}
 
 	this.lock.Lock()
-	if this.flag == started {
-		return ErrSessionStarted
+	if this.state == started {
+		return ErrStateFailed
 	}
-	this.flag = started
+	this.state = started
 
 	if this.codec == nil {
 		return ErrNoCodec
@@ -112,7 +131,7 @@ func (this *TCPConn) Start(msgCb func(interface{}, error)) error {
 func (this *TCPConn) isClose() bool {
 	this.lock.Lock()
 	defer this.lock.Unlock()
-	return this.flag == closed
+	return this.state == closed
 }
 
 //接收线程
@@ -122,48 +141,73 @@ func (this *TCPConn) receiveThread() {
 			return
 		}
 
-		if this.readTimeout > 0 {
-			this.conn.SetReadDeadline(time.Now().Add(this.readTimeout))
+		readTimeout, _ := this.getTimeout()
+		if readTimeout > 0 {
+			this.conn.SetReadDeadline(time.Now().Add(readTimeout))
 		}
 
-		msg, err := this.codec.Decode(this.conn)
-		if this.isClose() {
-			return
-		}
-		if err != nil {
-			//if err == io.EOF {
-			//	log.Println("read Close", err.Error())
-			//} else {
-			//	log.Println("read err: ", err.Error())
-			//}
-			//关闭连接
-			//this.Close(err.Error())
-			this.msgCallback(nil, err)
-		} else {
-			if msg != nil {
-				this.msgCallback(msg, nil)
+		codec := this.getCodec()
+		if codec != nil {
+			msg, err := codec.Decode(this.conn)
+			if this.isClose() {
+				return
 			}
+			if err != nil {
+				this.msgCallback(nil, err)
+			} else {
+				if msg != nil {
+					this.msgCallback(msg, nil)
+				}
+			}
+		} else {
+			this.msgCallback(nil, ErrNoCodec)
 		}
 	}
 }
 
-//发送线程
+// 发送线程
+// 关闭连接时，发送完后再关闭
 func (this *TCPConn) sendThread() {
-	defer this.close()
 	for {
-		data, isOpen := <-this.sendBufChan
-		if !isOpen {
-			break
-		}
-		if this.writeTimeout > 0 {
-			this.conn.SetWriteDeadline(time.Now().Add(this.writeTimeout))
-		}
+		select {
+		case o := <-this.pendingEncode:
+			// 需要编码的消息
+			codec := this.getCodec()
+			if codec == nil {
+				this.msgCallback(nil, ErrNoCodec)
+				break
+			}
 
-		_, err := this.conn.Write(data)
-		if err != nil {
-			//log.Println("write err: ", err.Error())
-			//this.Close(err.Error())
-			this.msgCallback(nil, err)
+			data, err := codec.Encode(o)
+			if err != nil {
+				this.msgCallback(nil, err)
+				break
+			}
+
+			this.sendBufferCh <- data
+			SendNotifyChan(this.sendNotifyCh)
+
+		case data := <-this.sendBufferCh:
+			// 直接发送的消息
+			_, writeTimeout := this.getTimeout()
+			if writeTimeout > 0 {
+				this.conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+			}
+
+			_, err := this.conn.Write(data)
+			if err != nil {
+				this.msgCallback(nil, err)
+			}
+
+		default:
+			closed := this.isClose()
+			if closed {
+				this.close()
+				return
+			} else {
+				// 等待发送事件
+				<-this.sendNotifyCh
+			}
 		}
 
 	}
@@ -175,18 +219,18 @@ func (this *TCPConn) Send(o interface{}) error {
 	}
 
 	this.lock.Lock()
-	if this.codec == nil {
-		return ErrNoCodec
+	if this.state != started {
+		return ErrStateFailed
 	}
-	codec := this.codec
 	this.lock.Unlock()
 
-	data, err := codec.Encode(o)
-	if err != nil {
-		return err
+	if this.getCodec() == nil {
+		return ErrNoCodec
 	}
 
-	return this.SendBytes(data)
+	this.pendingEncode <- o
+	SendNotifyChan(this.sendNotifyCh)
+	return nil
 }
 
 func (this *TCPConn) SendBytes(data []byte) error {
@@ -194,18 +238,19 @@ func (this *TCPConn) SendBytes(data []byte) error {
 		return ErrSendMsgNil
 	}
 
-	//非堵塞
-	if len(this.sendBufChan) == sendBufChanSize {
-		return ErrSendChanFull
-	}
-
 	this.lock.Lock()
-	if this.flag != started {
-		return ErrNotStarted
+	if this.state != started {
+		return ErrStateFailed
 	}
 	this.lock.Unlock()
 
-	this.sendBufChan <- data
+	//非堵塞
+	if len(this.sendBufferCh) == sendBufChanSize {
+		return ErrSendChanFull
+	}
+
+	this.sendBufferCh <- data
+	SendNotifyChan(this.sendNotifyCh)
 	return nil
 }
 
@@ -218,14 +263,14 @@ func (this *TCPConn) Close(reason string) {
 	defer this.lock.Unlock()
 
 	this.closeReason = reason
-	if this.flag == 0 || this.flag == closed {
-		this.close()
+	if this.state == 0 || this.state == closed {
 		return
 	}
 
-	close(this.sendBufChan)
-	this.flag = closed
+	this.state = closed
 	this.conn.CloseRead()
+	// 触发循环
+	SendNotifyChan(this.sendNotifyCh)
 }
 
 func (this *TCPConn) close() {
@@ -235,7 +280,7 @@ func (this *TCPConn) close() {
 	msg := this.closeReason
 	this.lock.Unlock()
 	if callback != nil {
-		callback(msg)
+		callback(this, msg)
 	}
 }
 
@@ -260,7 +305,7 @@ func (l *TCPListener) Listen(newClient func(session Session)) error {
 	}
 
 	if !atomic.CompareAndSwapInt32(&l.started, 0, 1) {
-		return ErrSessionStarted
+		return ErrStateFailed
 	}
 
 	go func() {

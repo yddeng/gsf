@@ -18,6 +18,6 @@ func main() {
 
 	util.InitLogger("log", "center")
 
-	center.Launcher(os.Args[1])
+	center.Launch(os.Args[1])
 	util.Logger().Infof("receive signal:%s to shutdown", <-signal.ListenStop())
 }

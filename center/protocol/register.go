@@ -18,10 +18,10 @@ const (
 )
 
 func init() {
-	pb.Register("center_req", &LoginReq{}, 1)
-	pb.Register("center_resp", &LoginResp{}, 2)
-	pb.Register("center_ss", &Heartbeat{}, 3)
-	pb.Register("center_ss", &NotifyNodeInfo{}, 4)
-	pb.Register("center_ss", &NodeLeave{}, 5)
-	pb.Register("center_ss", &NodeEnter{}, 6)
+	pb.Register(REQ_SPACE, &LoginReq{}, 1)
+	pb.Register(RESP_SPACE, &LoginResp{}, 2)
+	pb.Register(SS_SPACE, &Heartbeat{}, 3)
+	pb.Register(SS_SPACE, &NotifyNodeInfo{}, 4)
+	pb.Register(SS_SPACE, &NodeLeave{}, 5)
+	pb.Register(SS_SPACE, &NodeEnter{}, 6)
 }

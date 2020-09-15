@@ -21,7 +21,7 @@ func newProtocol() *protocol.Protocol {
 }
 
 //根据名字注册实例(注意函数非线程安全，需要在初始化阶段完成所有消息的Register)
-func Register(namespace string, msg proto.Message, id uint16) error {
+func Register(namespace string, msg proto.Message, id uint16) {
 	var ns *protocol.Protocol
 	var sc *nameCmd
 	var ok bool
@@ -42,7 +42,7 @@ func Register(namespace string, msg proto.Message, id uint16) error {
 	sc.cmd2Name[id] = name
 	sc.name2Cmd[name] = id
 
-	return ns.Register(id, msg)
+	ns.Register(id, msg)
 }
 
 func Marshal(namespace string, o interface{}) (uint16, []byte, error) {

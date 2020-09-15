@@ -25,10 +25,10 @@ const (
 )
 
 const (
-	SS_Message     = 0x01
-	RPC_Request    = 0x02 //rpc请求
-	RPC_Response   = 0x04 //rpc回复
-	RPC_Resp_Error = 0x12 //rpc回复错误
+	SS_Message     = 0x01 // ss普通消息
+	RPC_Request    = 0x02 // rpc请求
+	RPC_Response   = 0x04 // rpc回复
+	RPC_Resp_Error = 0x12 // rpc回复错误
 )
 
 type Codec struct {
@@ -63,7 +63,10 @@ func checkTT(tt byte) byte {
 	if tt&RPC_Request != 0 {
 		return RPC_Request
 	}
-	return RPC_Response
+	if tt&RPC_Response != 0 {
+		return RPC_Response
+	}
+	return 0
 }
 
 //解码
@@ -144,7 +147,7 @@ func (decoder *Codec) unPack() (interface{}, error) {
 		}
 		msg = resp
 	default:
-		err = fmt.Errorf("unPack err: flag is %d", decoder.tt)
+		err = fmt.Errorf("unPack err: tt is %d", decoder.tt)
 	}
 
 	decoder.readHead = false

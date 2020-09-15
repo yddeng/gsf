@@ -69,7 +69,7 @@ func (this *centerPoint) onConnected(session dnet.Session) {
 		this.session = session
 
 		session.SetCodec(ss.NewCodec(protocol.SS_SPACE, protocol.REQ_SPACE, protocol.RESP_SPACE))
-		session.SetCloseCallBack(func(reason string) {
+		session.SetCloseCallBack(func(session dnet.Session, reason string) {
 			eventQueue.Push(func() {
 				if this.heartbeatTicker != nil {
 					this.heartbeatTicker.Stop()

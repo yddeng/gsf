@@ -40,7 +40,7 @@ func dispatchMsg(session dnet.Session, msg *ss.Message) {
 	}
 }
 
-func Launcher(netAddr string) {
+func Launch(netAddr string) {
 	l := util.Must(dnet.NewTCPListener("tcp", netAddr)).(*dnet.TCPListener)
 
 	Init()
@@ -50,10 +50,8 @@ func Launcher(netAddr string) {
 			util.Logger().Infoln("new client", session.RemoteAddr().String())
 			// 超时时间
 			session.SetTimeout(heartbeatTimeout, 0)
-			session.SetCodec(ss.NewCodec("center_ss", "center_req", "center_resp"))
-			session.SetCloseCallBack(func(reason string) {
-				onClose(session, reason)
-			})
+			session.SetCodec(ss.NewCodec(protocol.SS_SPACE, protocol.REQ_SPACE, protocol.RESP_SPACE))
+			session.SetCloseCallBack(onClose)
 
 			err := session.Start(func(data interface{}, err error) {
 				if err != nil {

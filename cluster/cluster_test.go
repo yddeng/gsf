@@ -21,7 +21,7 @@ func TestLauncher(t *testing.T) {
 		return
 	}
 
-	err = Launcher("127.0.0.1:9874", logic)
+	err = Launch("127.0.0.1:9874", logic)
 	if err != nil {
 		fmt.Println(2, err)
 		return
@@ -48,7 +48,7 @@ func TestAsynCall1(t *testing.T) {
 		fmt.Println(req)
 	})
 
-	err := Launcher("127.0.0.1:9874", logic1)
+	err := Launch("127.0.0.1:9874", logic1)
 	if err != nil {
 		fmt.Println(2, err)
 		return
@@ -98,7 +98,7 @@ func TestAsynCall2(t *testing.T) {
 		fmt.Println(req)
 	})
 
-	err := Launcher("127.0.0.1:9874", logic2)
+	err := Launch("127.0.0.1:9874", logic2)
 	if err != nil {
 		fmt.Println(2, err)
 		return

@@ -22,9 +22,9 @@ type WSConn struct {
 
 	sendBufChan chan []byte //发送队列
 
-	msgCallback   func(interface{}, error) //消息回调
-	closeCallback func(string)             //关闭连接回调
-	closeReason   string                   //关闭原因
+	msgCallback   func(interface{}, error)             //消息回调
+	closeCallback func(session Session, reason string) //关闭连接回调
+	closeReason   string                               //关闭原因
 
 	lock sync.Mutex
 }
@@ -60,7 +60,7 @@ func (this *WSConn) RemoteAddr() net.Addr {
 
 func (this *WSConn) SetCodec(codec Codec) {}
 
-func (this *WSConn) SetCloseCallBack(closeCallback func(reason string)) {
+func (this *WSConn) SetCloseCallBack(closeCallback func(session Session, reason string)) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 	this.closeCallback = closeCallback
@@ -86,7 +86,7 @@ func (this *WSConn) Start(msgCb func(interface{}, error)) error {
 
 	this.lock.Lock()
 	if this.flag == started {
-		return ErrSessionStarted
+		return ErrStateFailed
 	}
 	this.flag = started
 	this.msgCallback = msgCb
@@ -170,10 +170,10 @@ func (this *WSConn) SendBytes(data []byte) error {
 
 	this.lock.Lock()
 	if this.flag == 0 {
-		return ErrNotStarted
+		return ErrStateFailed
 	}
 	if this.flag == closed {
-		return ErrSessionClosed
+		return ErrStateFailed
 	}
 	this.lock.Unlock()
 
@@ -204,7 +204,7 @@ func (this *WSConn) close() {
 	msg := this.closeReason
 	this.lock.Unlock()
 	if callback != nil {
-		callback(msg)
+		callback(this, msg)
 	}
 }
 
@@ -256,7 +256,7 @@ func (this *WSListener) Listen(newClient func(Session)) error {
 	}
 
 	if !atomic.CompareAndSwapInt32(&this.started, 0, 1) {
-		return ErrSessionStarted
+		return ErrStateFailed
 	}
 
 	http.HandleFunc(this.origin, func(w http.ResponseWriter, r *http.Request) {

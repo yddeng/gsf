@@ -9,7 +9,7 @@ import (
 	"net"
 )
 
-func Launcher(centerAddr string, self *addr.Addr) error {
+func Launch(centerAddr string, self *addr.Addr) error {
 	l, err := net.ListenTCP("tcp", self.Net)
 	if err != nil {
 		return err

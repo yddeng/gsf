@@ -27,22 +27,21 @@ func NewProtoc(protoc Protoc) *Protocol {
 	}
 }
 
-func (this *Protocol) Register(id uint16, msg interface{}) error {
+func (this *Protocol) Register(id uint16, msg interface{}) {
 	tt := reflect.TypeOf(msg)
 
 	if _, ok := this.id2Type[id]; ok {
-		return fmt.Errorf("%d already register to type:%s", id, tt)
+		panic(fmt.Sprintf("%d already register to type:%s\n", id, tt))
 	}
 
 	this.id2Type[id] = tt
 	this.type2Id[tt] = id
-	return nil
 }
 
 func (this *Protocol) Marshal(data interface{}) (uint16, []byte, error) {
 	id, ok := this.type2Id[reflect.TypeOf(data)]
 	if !ok {
-		return 0, nil, fmt.Errorf("type: %s undefined", reflect.TypeOf(data))
+		return 0, nil, fmt.Errorf("marshal type: %s undefined", reflect.TypeOf(data))
 	}
 
 	ret, err := this.protoc.Marshaler(data)
@@ -56,7 +55,7 @@ func (this *Protocol) Marshal(data interface{}) (uint16, []byte, error) {
 func (this *Protocol) Unmarshal(msgID uint16, data []byte) (msg interface{}, err error) {
 	tt, ok := this.id2Type[msgID]
 	if !ok {
-		err = fmt.Errorf("msgID: %d undefined", msgID)
+		err = fmt.Errorf("unmarshal msgID: %d undefined", msgID)
 		return
 	}
 

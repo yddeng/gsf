@@ -176,20 +176,21 @@ func connectOk(end *endpoint, session dnet.Session) {
 
 	session.SetTimeout(heartbeatTime, 0)
 	session.SetCodec(ss.NewCodec(protoss.SS_SPACE, protorpc.REQ_SPACE, protorpc.RESP_SPACE))
-	session.SetCloseCallBack(func(reason string) {
+	session.SetCloseCallBack(func(session dnet.Session, reason string) {
 		end.Lock()
+		defer end.Unlock()
 		end.session = nil
-		end.Unlock()
 		session.SetContext(nil)
 		util.Logger().Infof("endpoint %s session closed, reason: %s\n", end.logic.Logic.String(), reason)
 	})
 
 	end.Lock()
+	defer end.Unlock()
+
 	end.dialing = false
 	end.dialTimeout = time.Time{}
 
 	if end.session != nil {
-		end.Unlock()
 		util.Logger().Infof("endpoint %s already connect", end.logic.Logic.String())
 		session.Close(fmt.Sprintf("endpoint %s already connect", end.logic.Logic.String()))
 		return
@@ -232,5 +233,5 @@ func connectOk(end *endpoint, session dnet.Session) {
 	}
 	end.ssMsg = end.ssMsg[0:0]
 	end.reqMsg = end.reqMsg[0:0]
-	end.Unlock()
+
 }

@@ -47,7 +47,7 @@ func (this *Node) SendResponse(resp *rpc.Response) error {
 
 // todo 网络闪断
 func onClose(session dnet.Session, reason string) {
-	//util.Logger().Infoln("onClose", reason)
+	util.Logger().Infoln("onClose", reason)
 	ctx := session.Context()
 	if ctx != nil {
 		n := ctx.(*Node)
