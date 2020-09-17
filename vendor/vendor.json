@@ -17,20 +17,20 @@
 		{
 			"checksumSHA1": "j1fgU6Kd4wSEeo5oT5DrdWotttA=",
 			"path": "github.com/yddeng/dnet",
-			"revision": "dd67d265bb8ee388cb9a776958acbdb2aa2fb10e",
-			"revisionTime": "2020-09-17T01:12:27Z"
+			"revision": "ef0fbbc01567022af18ab9655001b334748eccbd",
+			"revisionTime": "2020-09-17T09:32:41Z"
 		},
 		{
-			"checksumSHA1": "7tBrbjcIIhAZAnZivhnfQwLdgcw=",
+			"checksumSHA1": "xNjiruputKbOvvHmtqknQB2VVEI=",
 			"path": "github.com/yddeng/dnet/drpc",
-			"revision": "dd67d265bb8ee388cb9a776958acbdb2aa2fb10e",
-			"revisionTime": "2020-09-17T01:12:27Z"
+			"revision": "ef0fbbc01567022af18ab9655001b334748eccbd",
+			"revisionTime": "2020-09-17T09:32:41Z"
 		},
 		{
 			"checksumSHA1": "94DTs6iMcd63kFNDSI/QWGYZVdo=",
 			"path": "github.com/yddeng/dnet/dtcp",
-			"revision": "dd67d265bb8ee388cb9a776958acbdb2aa2fb10e",
-			"revisionTime": "2020-09-17T01:12:27Z"
+			"revision": "ef0fbbc01567022af18ab9655001b334748eccbd",
+			"revisionTime": "2020-09-17T09:32:41Z"
 		},
 		{
 			"checksumSHA1": "GxSEErp6ZYKFbNeuHdLmq4nxjRM=",

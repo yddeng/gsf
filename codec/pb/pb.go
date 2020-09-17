@@ -38,6 +38,11 @@ func Register(namespace string, msg proto.Message, id uint16) {
 		}
 		spaceCmd[namespace] = sc
 	}
+
+	if _, ok := sc.cmd2Name[id]; ok {
+		panic(fmt.Sprintf("id %d id areadly register", id))
+	}
+
 	name := proto.MessageName(msg)
 	sc.cmd2Name[id] = name
 	sc.name2Cmd[name] = id
