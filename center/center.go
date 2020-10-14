@@ -2,12 +2,12 @@ package center
 
 import (
 	"fmt"
-	"github.com/golang/protobuf/proto"
 	"github.com/yddeng/dnet"
 	"github.com/yddeng/dnet/drpc"
 	"github.com/yddeng/dnet/dtcp"
 	"github.com/yddeng/dutil/queue"
 	"github.com/yddeng/gsf/center/protocol"
+	"github.com/yddeng/gsf/codec/pb"
 	"github.com/yddeng/gsf/codec/ss"
 	"github.com/yddeng/gsf/util"
 	"reflect"
@@ -95,5 +95,5 @@ func Init() {
 	registerHandler(protocol.HeartbeatCmd, onHeartbeat)
 
 	// rpc
-	util.Must(nil, rpcServer.Register(proto.MessageName(&protocol.LoginReq{}), onLogin))
+	rpcServer.Register(pb.GetNameById(protocol.REQ_SPACE, protocol.LoginReqCmd), onLogin)
 }

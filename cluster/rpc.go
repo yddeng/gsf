@@ -45,7 +45,6 @@ func AsynCall(logic addr.LogicAddr, data proto.Message, callback func(interface{
 	return rpcMgr.rpcClient.AsynCall(end, proto.MessageName(data), data, rpcTimeout, callback)
 }
 
-func RegisterRPCMethod(rpcMsg proto.Message, h drpc.MethodHandler) {
-	name := proto.MessageName(rpcMsg)
+func RegisterRPCMethod(name string, h drpc.MethodHandler) {
 	rpcMgr.rpcServer.Register(name, h)
 }

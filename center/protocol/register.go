@@ -11,6 +11,8 @@ const (
 )
 
 const (
+	LoginReqCmd       = 1
+	LoginRespCmd      = 2
 	HeartbeatCmd      = 3
 	NotifyNodeInfoCmd = 4
 	NodeLeaveCmd      = 5
