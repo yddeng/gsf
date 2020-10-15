@@ -24,14 +24,14 @@ const (
 )
 
 type Codec struct {
-	s2c, c2s string
+	decode, encode string
 	*Decoder
 }
 
-func NewCodec(s2c, c2s string) *Codec {
+func NewCodec(decode, encode string) *Codec {
 	return &Codec{
-		s2c: s2c,
-		c2s: c2s,
+		decode: decode,
+		encode: encode,
 		Decoder: &Decoder{
 			readBuf: buffer.NewBufferWithCap(65535),
 		},
@@ -89,7 +89,7 @@ func (decoder *Codec) unPack() (*Message, error) {
 		}
 
 		data, _ := decoder.readBuf.ReadBytes(int(decoder.bodyLen))
-		i, err := pb.Unmarshal(decoder.c2s, decoder.cmd, data)
+		i, err := pb.Unmarshal(decoder.decode, decoder.cmd, data)
 		if err != nil {
 			return nil, err
 		}
@@ -114,10 +114,10 @@ func (encoder *Codec) Encode(o interface{}) ([]byte, error) {
 
 	var dataLen int
 	var data []byte
-	var cmd uint16
+	var cmd = msg.GetCmd()
 	var err error
 	if msg.errCode == 0 {
-		cmd, data, err = pb.Marshal(encoder.s2c, msg.GetData())
+		cmd, data, err = pb.Marshal(encoder.encode, msg.GetData())
 		if err != nil {
 			return nil, err
 		}
