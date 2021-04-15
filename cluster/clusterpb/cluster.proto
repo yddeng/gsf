@@ -1,5 +1,5 @@
 syntax = "proto3";
-option go_package = "protocol";
+option go_package = "clusterpb";
 
 message nodeInfo {
 	uint32 logicAddr     = 1;

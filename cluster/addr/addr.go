@@ -14,10 +14,10 @@ const (
 )
 
 var (
-	ErrInvaildAddrFmt = fmt.Errorf("invaild addr format")
-	ErrInvaildGroup   = fmt.Errorf("group should between(1,16383)")
-	ErrInvaildType    = fmt.Errorf("type should between(1,254)")
-	ErrInvaildServer  = fmt.Errorf("server should between(1,1023)")
+	ErrInvalidAddrFmt = fmt.Errorf("invalid addr format")
+	ErrInvalidGroup   = fmt.Errorf("group should between(1,16383)")
+	ErrInvalidType    = fmt.Errorf("type should between(1,254)")
+	ErrInvalidServer  = fmt.Errorf("server should between(1,1023)")
 )
 
 type LogicAddr uint32
@@ -80,34 +80,34 @@ func MakeLogicAddr(addr string) (LogicAddr, error) {
 	var err error
 	v := strings.Split(addr, ".")
 	if len(v) != 3 {
-		return LogicAddr(0), ErrInvaildAddrFmt
+		return LogicAddr(0), ErrInvalidAddrFmt
 	}
 
 	group, err := strconv.Atoi(v[0])
 	if nil != err {
-		return LogicAddr(0), ErrInvaildGroup
+		return LogicAddr(0), ErrInvalidGroup
 	}
 
 	if 0 == group || uint32(group) > (GroupMask>>18) {
-		return LogicAddr(0), ErrInvaildGroup
+		return LogicAddr(0), ErrInvalidGroup
 	}
 
 	tt, err := strconv.Atoi(v[1])
 	if nil != err {
-		return LogicAddr(0), ErrInvaildType
+		return LogicAddr(0), ErrInvalidType
 	}
 
 	if 0 == tt || uint32(tt) > ((TypeMask>>10)-1) {
-		return LogicAddr(0), ErrInvaildType
+		return LogicAddr(0), ErrInvalidType
 	}
 
 	server, err := strconv.Atoi(v[2])
 	if nil != err {
-		return LogicAddr(0), ErrInvaildServer
+		return LogicAddr(0), ErrInvalidServer
 	}
 
 	if server == 0 || uint32(server) > ServerMask {
-		return LogicAddr(0), ErrInvaildServer
+		return LogicAddr(0), ErrInvalidServer
 	}
 
 	return LogicAddr(0 | (uint32(tt) << 10) | (uint32(group) << 18) | (uint32(server))), nil

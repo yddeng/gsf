@@ -1,7 +1,7 @@
-package protocol
+package clusterpb
 
 import (
-	"github.com/yddeng/gsf/codec/pb"
+	"github.com/yddeng/clugs/codec/pb"
 )
 
 const (
@@ -20,10 +20,10 @@ const (
 )
 
 func init() {
-	pb.Register(REQ_SPACE, &LoginReq{}, 1)
-	pb.Register(RESP_SPACE, &LoginResp{}, 2)
-	pb.Register(SS_SPACE, &Heartbeat{}, 3)
-	pb.Register(SS_SPACE, &NotifyNodeInfo{}, 4)
-	pb.Register(SS_SPACE, &NodeLeave{}, 5)
-	pb.Register(SS_SPACE, &NodeEnter{}, 6)
+	pb.Register(REQ_SPACE, &LoginReq{}, LoginReqCmd)
+	pb.Register(RESP_SPACE, &LoginResp{}, LoginRespCmd)
+	pb.Register(SS_SPACE, &Heartbeat{}, HeartbeatCmd)
+	pb.Register(SS_SPACE, &NotifyNodeInfo{}, NotifyNodeInfoCmd)
+	pb.Register(SS_SPACE, &NodeLeave{}, NodeLeaveCmd)
+	pb.Register(SS_SPACE, &NodeEnter{}, NodeEnterCmd)
 }

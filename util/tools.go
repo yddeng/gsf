@@ -9,7 +9,7 @@ import (
 
 type TimeTaskFunc func()
 
-func StartLoopTask(t time.Duration, fun TimeTaskFunc) *time.Ticker {
+func LoopTask(t time.Duration, fun TimeTaskFunc) *time.Ticker {
 	timeTicker := time.NewTicker(t)
 	go func() {
 		for {

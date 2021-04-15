@@ -3,14 +3,19 @@ package cluster
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/yddeng/clugs/cluster/addr"
+	"github.com/yddeng/clugs/util/logger"
 	"github.com/yddeng/dnet/drpc"
-	"github.com/yddeng/gsf/cluster/addr"
-	"github.com/yddeng/gsf/util"
 )
 
 type rpcManager struct {
 	rpcServer *drpc.Server
 	rpcClient *drpc.Client
+}
+
+var rpcMgr = &rpcManager{
+	rpcServer: drpc.NewServer(),
+	rpcClient: drpc.NewClient(),
 }
 
 /*
@@ -33,16 +38,16 @@ func (this *RPCChannel) SendResponse(resp *drpc.Response) error {
 }
 */
 
-func AsynCall(logic addr.LogicAddr, data proto.Message, callback func(interface{}, error)) error {
+func RPCGo(logic addr.LogicAddr, data proto.Message, callback func(interface{}, error)) error {
 	end := endpoints.getEndpointByLogic(logic)
 	if end == nil {
-		util.Logger().Errorf("%s is not found", logic.String())
+		logger.Errorf("%s is not found", logic.String())
 		return fmt.Errorf("%s is not found", logic.String())
 	}
 
 	end.Lock()
 	defer end.Unlock()
-	return rpcMgr.rpcClient.AsynCall(end, proto.MessageName(data), data, rpcTimeout, callback)
+	return rpcMgr.rpcClient.Go(end, proto.MessageName(data), data, rpcTimeout, callback)
 }
 
 func RegisterRPCMethod(name string, h drpc.MethodHandler) {

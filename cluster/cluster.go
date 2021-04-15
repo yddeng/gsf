@@ -3,20 +3,56 @@ package cluster
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
-	"github.com/yddeng/gsf/cluster/addr"
-	"github.com/yddeng/gsf/codec/ss"
-	"github.com/yddeng/gsf/util"
+	"github.com/yddeng/clugs/cluster/addr"
+	"github.com/yddeng/dutil/task"
 	"net"
+	"sync"
+	"time"
 )
 
-func Launch(centerAddr string, self *addr.Addr) error {
-	l, err := net.ListenTCP("tcp", self.Net)
+var (
+	taskQueue = task.NewTaskQueue(1024)
+
+	heartbeatTime = time.Second * 30 // 集群节点间超时时间间隔
+	rpcTimeout    = time.Second * 8  // rpc 请求超时时间间隔
+
+	LocalAddr *addr.Addr
+	clu *cluster = &cluster{
+		ssHandler:  map[uint16]func(from addr.LogicAddr, msg proto.Message),
+		Mutex: new(sync.Mutex),
+	}
+)
+
+func init() {
+	taskQueue.Run()
+}
+
+
+type cluster struct {
+	ssHandler  map[uint16]func(from addr.LogicAddr, msg proto.Message)
+	endGroup *endpointGroup
+	centerDialer *clusterCenterDialer
+	*sync.Mutex
+}
+
+func Launch(centerAddr string, localAddr *addr.Addr)  {
+	l, err := net.ListenTCP("tcp", localAddr.Net)
 	if err != nil {
-		return err
+		panic(err)
 	}
 
-	connectCenter(centerAddr, self)
-	selfPoint = &endpoint{logic: self}
+	LocalAddr = localAddr
+	clu = &cluster{
+		endGroup: &endpointGroup{
+			logic2End: map[addr.LogicAddr]*endpoint{},
+			type2End:  map[uint32]*endpoint{},
+			Mutex:     new(sync.Mutex),
+		},
+		Mutex: nil,
+	}
+
+	clu.centerDialer = dialCenter(centerAddr, clu)
+
 
 	go func() {
 		for {
@@ -35,7 +71,6 @@ func Launch(centerAddr string, self *addr.Addr) error {
 		}
 	}()
 
-	return nil
 }
 
 func Post(logic addr.LogicAddr, msg proto.Message) error {

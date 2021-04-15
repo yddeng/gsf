@@ -3,13 +3,10 @@ package cluster
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/yddeng/clugs/cluster/addr"
+	"github.com/yddeng/clugs/codec/ss"
 	"github.com/yddeng/dnet"
 	"github.com/yddeng/dnet/drpc"
-	"github.com/yddeng/gsf/cluster/addr"
-	"github.com/yddeng/gsf/codec/pb"
-	"github.com/yddeng/gsf/codec/ss"
-	protoss "github.com/yddeng/gsf/protocol/ss"
-	"github.com/yddeng/gsf/util"
 	"reflect"
 	"sync"
 	"time"
@@ -23,8 +20,7 @@ type endpoint struct {
 
 	ssMsg  []*ss.Message
 	reqMsg []*drpc.Request
-
-	*sync.Mutex
+	mtx    *sync.Mutex
 }
 
 type call struct {
@@ -40,7 +36,6 @@ func newEndpoint(logic *addr.Addr) *endpoint {
 		dialTimeout: time.Time{},
 		ssMsg:       make([]*ss.Message, 0, 4),
 		reqMsg:      make([]*drpc.Request, 0, 4),
-		Mutex:       new(sync.Mutex),
 	}
 }
 
