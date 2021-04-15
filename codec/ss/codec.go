@@ -3,11 +3,11 @@ package ss
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/yddeng/clugs/codec/pb"
+	_ "github.com/yddeng/clugs/protocol/rpc"
+	_ "github.com/yddeng/clugs/protocol/ss"
 	"github.com/yddeng/dnet/drpc"
 	"github.com/yddeng/dutil/buffer"
-	"github.com/yddeng/gsf/codec/pb"
-	_ "github.com/yddeng/gsf/protocol/rpc"
-	_ "github.com/yddeng/gsf/protocol/ss"
 	"io"
 	"reflect"
 )
@@ -25,10 +25,9 @@ const (
 )
 
 const (
-	SS_Message     = 0x01 // ss普通消息
-	RPC_Request    = 0x02 // rpc请求
-	RPC_Response   = 0x04 // rpc回复
-	RPC_Resp_Error = 0x12 // rpc回复错误
+	SS_Message   = 0x01 // ss普通消息
+	RPC_Request  = 0x02 // rpc请求
+	RPC_Response = 0x04 // rpc回复
 )
 
 type Codec struct {
@@ -54,19 +53,6 @@ type Decoder struct {
 	seqNo    uint64
 	cmd      uint16
 	bodyLen  uint16
-}
-
-func checkTT(tt byte) byte {
-	if tt&SS_Message != 0 {
-		return SS_Message
-	}
-	if tt&RPC_Request != 0 {
-		return RPC_Request
-	}
-	if tt&RPC_Response != 0 {
-		return RPC_Response
-	}
-	return 0
 }
 
 //解码
@@ -111,7 +97,7 @@ func (decoder *Codec) unPack() (interface{}, error) {
 	}
 	var msg interface{}
 
-	switch checkTT(decoder.tt) {
+	switch decoder.tt {
 	case SS_Message:
 		m, err := pb.Unmarshal(decoder.ss, decoder.cmd, data)
 		if err != nil {
@@ -128,24 +114,20 @@ func (decoder *Codec) unPack() (interface{}, error) {
 			return nil, err
 		}
 		msg = &drpc.Request{
-			SeqNo:    decoder.seqNo,
-			Method:   pb.GetNameById(decoder.req, decoder.cmd),
-			Data:     m,
-			NeedResp: true,
+			SeqNo:  decoder.seqNo,
+			Method: pb.GetNameById(decoder.req, decoder.cmd),
+			Data:   m,
 		}
 	case RPC_Response:
-		resp := &drpc.Response{SeqNo: decoder.seqNo}
-		if decoder.tt == RPC_Resp_Error {
-			resp.Err = fmt.Errorf(string(data))
-
-		} else {
-			m, err := pb.Unmarshal(decoder.resp, decoder.cmd, data)
-			if err != nil {
-				return nil, err
-			}
-			resp.Data = m
+		m, err := pb.Unmarshal(decoder.resp, decoder.cmd, data)
+		if err != nil {
+			return nil, err
 		}
-		msg = resp
+		msg = &drpc.Response{
+			SeqNo: decoder.seqNo,
+			Data:  m,
+		}
+
 	default:
 		err = fmt.Errorf("unPack err: tt is %d", decoder.tt)
 	}
@@ -182,17 +164,13 @@ func (encoder *Codec) Encode(o interface{}) ([]byte, error) {
 
 	case *drpc.Response:
 		msg := o.(*drpc.Response)
-		if msg.Err != nil {
-			tt = RPC_Resp_Error
-			data = []byte(msg.Err.Error())
-		} else {
-			tt = RPC_Response
-			seqNo = msg.SeqNo
-			cmd, data, err = pb.Marshal(encoder.resp, msg.Data)
-			if err != nil {
-				return nil, err
-			}
+		tt = RPC_Response
+		seqNo = msg.SeqNo
+		cmd, data, err = pb.Marshal(encoder.resp, msg.Data)
+		if err != nil {
+			return nil, err
 		}
+
 	default:
 		return nil, fmt.Errorf("invailed type:%s", reflect.TypeOf(o).String())
 	}

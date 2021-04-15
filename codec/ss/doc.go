@@ -1,7 +1,7 @@
 package ss
 
 /*
- ss 消息编解码器
+ ss 消息编解码器， 集群内部使用
 
  rpc 请求,命名空间 req
  rpc 回复,命名空间 resp
