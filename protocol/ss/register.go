@@ -1,8 +1,8 @@
 package ss
 
 import (
-	"github.com/yddeng/gsf/codec/pb"
-	"github.com/yddeng/gsf/protocol/ss/sspb"
+	"github.com/yddeng/clugs/codec/pb"
+	"github.com/yddeng/clugs/protocol/ss/sspb"
 )
 
 const (

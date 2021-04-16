@@ -1,5 +1,5 @@
 syntax = "proto3";
-option go_package = "gsf/protocol/rpc/rpcpb";
+option go_package = "clugs/protocol/rpc/rpcpb";
 
 message echoReq {
     string msg = 1;

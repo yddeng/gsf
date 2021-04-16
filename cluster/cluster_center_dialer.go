@@ -66,12 +66,12 @@ func (this *clusterCenterDialer) onConnected(conn dnet.NetConn) {
 						this.heartbeatTicker = nil
 					}
 					this.session = nil
-					logger.Infof("cluster.center_dialer:onConnected session closed, reason: %s\n", reason)
+					logger.Infof("onConnected session closed, reason: %s\n", reason)
 					this.dial()
 				})
 			}),
 			dnet.WithErrorCallback(func(session dnet.Session, err error) {
-				logger.Error("cluster.center_dialer:onConnected session error:", err)
+				logger.Error("onConnected session error:", err)
 				session.Close(err)
 			}),
 			dnet.WithMessageCallback(func(session dnet.Session, message interface{}) {
@@ -87,7 +87,7 @@ func (this *clusterCenterDialer) onConnected(conn dnet.NetConn) {
 						err = fmt.Errorf("invalid type:%s", reflect.TypeOf(message).String())
 					}
 					if err != nil {
-						logger.Errorf("cluster.center_dialer:onConnected dispatch error: %s. \n", err.Error())
+						logger.Errorf("onConnected dispatch error: %s. \n", err.Error())
 					}
 				})
 			}),
@@ -104,16 +104,16 @@ func (this *clusterCenterDialer) onConnected(conn dnet.NetConn) {
 			if e != nil || !i.(*clusterpb.LoginResp).GetOk() {
 				var msg string
 				if e != nil {
-					msg = fmt.Sprintf("cluster.center_dialer:onConnected loginResp failed, error %s", e.Error())
+					msg = fmt.Sprintf("onConnected loginResp failed, error %s", e.Error())
 				} else {
-					msg = fmt.Sprintf("cluster.center_dialer:onConnected loginResp false, msg %s", i.(*clusterpb.LoginResp).GetMsg())
+					msg = fmt.Sprintf("onConnected loginResp false, msg %s", i.(*clusterpb.LoginResp).GetMsg())
 				}
 				logger.Error(msg)
 				panic(msg)
 				return
 			}
 
-			logger.Info("cluster.center_dialer:onConnected login center ok")
+			logger.Info("onConnected login center ok")
 			// 在center上注册成功，心跳
 			this.heartbeatTicker = util.LoopTask(time.Second, func() {
 				_ = this.send(this.heartbeat)
@@ -148,6 +148,8 @@ func (this *clusterCenterDialer) dispatchMsg(session dnet.Session, msg *ss.Messa
 		this.onNodeLeave(session, msg)
 	case clusterpb.NodeEnterCmd:
 		this.onNodeEnter(session, msg)
+	case clusterpb.HeartbeatCmd:
+
 	default:
 		return fmt.Errorf("dispatchMsg invailed cmd %d in nameSpace %s", cmd, clusterpb.SS_SPACE)
 	}
@@ -157,7 +159,7 @@ func (this *clusterCenterDialer) dispatchMsg(session dnet.Session, msg *ss.Messa
 // 通知自己有哪些在线(新增节点，删除节点)
 func (this *clusterCenterDialer) onNotifyNodeInfo(session dnet.Session, msg *ss.Message) {
 	req := msg.GetData().(*clusterpb.NotifyNodeInfo)
-	logger.Infof("cluster.center_dialer:onNotifyNodeInfo %v", req)
+	logger.Infof("onNotifyNodeInfo %v", req)
 
 	existNode := map[addr.LogicAddr]struct{}{} // center 上现存的节点
 
@@ -165,7 +167,7 @@ func (this *clusterCenterDialer) onNotifyNodeInfo(session dnet.Session, msg *ss.
 	for _, v := range req.GetNodes() {
 		logicAddr, err := addr.MakeAddr(addr.LogicAddr(v.GetLogicAddr()).String(), v.GetNetAddr())
 		if err != nil {
-			logger.Errorf("cluster.center_dialer:onNotifyNodeInfo error :%s. ", err.Error())
+			logger.Errorf("onNotifyNodeInfo error :%s. ", err.Error())
 			continue
 		}
 
@@ -205,17 +207,17 @@ func (this *clusterCenterDialer) onNotifyNodeInfo(session dnet.Session, msg *ss.
 
 func (this *clusterCenterDialer) onNodeLeave(session dnet.Session, msg *ss.Message) {
 	req := msg.GetData().(*clusterpb.NodeLeave)
-	logger.Infof("cluster.center_dialer:onNodeLeave %v", req)
+	logger.Infof("onNodeLeave %v", req)
 	endGroup.delEndpoint(addr.LogicAddr(req.GetLogicAddr()))
 }
 
 func (this *clusterCenterDialer) onNodeEnter(session dnet.Session, msg *ss.Message) {
 	req := msg.GetData().(*clusterpb.NodeEnter)
-	logger.Infof("cluster.center_dialer:onNodeEnter %v", req)
+	logger.Infof("onNodeEnter %v", req)
 
 	logicAddr, err := addr.MakeAddr(addr.LogicAddr(req.GetNode().GetLogicAddr()).String(), req.GetNode().GetNetAddr())
 	if err != nil {
-		logger.Errorf("cluster.center_dialer:onNodeEnter error :%s. ", err.Error())
+		logger.Errorf("onNodeEnter error :%s. ", err.Error())
 		return
 	}
 

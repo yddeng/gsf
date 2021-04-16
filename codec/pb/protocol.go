@@ -40,7 +40,7 @@ func (this *Protocol) Register(id uint16, msg interface{}) {
 func (this *Protocol) Marshal(data interface{}) (uint16, []byte, error) {
 	id, ok := this.type2Id[reflect.TypeOf(data)]
 	if !ok {
-		return 0, nil, fmt.Errorf("marshal type: %s undefined", reflect.TypeOf(data))
+		return 0, nil, fmt.Errorf("codec.pb:Marshal type: %s undefined", reflect.TypeOf(data))
 	}
 
 	ret, err := this.protoc.Marshal(data)
@@ -54,7 +54,7 @@ func (this *Protocol) Marshal(data interface{}) (uint16, []byte, error) {
 func (this *Protocol) Unmarshal(msgID uint16, data []byte) (msg interface{}, err error) {
 	tt, ok := this.id2Type[msgID]
 	if !ok {
-		err = fmt.Errorf("unmarshal msgID: %d undefined", msgID)
+		err = fmt.Errorf("codec.pb:Unmarshal msgID: %d undefined", msgID)
 		return
 	}
 

@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/yddeng/gsf/protocol/ss/proto_def"
+	"github.com/yddeng/clugs/protocol/ss/proto_def"
 	"io/ioutil"
 	"os"
 	"path"
@@ -40,8 +40,8 @@ func gen_proto(out_path string) {
 var register_template = `package ss
 
 import (
-	"github.com/yddeng/gsf/codec/pb"
-	"github.com/yddeng/gsf/protocol/ss/sspb"
+	"github.com/yddeng/clugs/codec/pb"
+	"github.com/yddeng/clugs/protocol/ss/sspb"
 )
 
 const (

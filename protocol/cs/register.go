@@ -1,8 +1,8 @@
 package cs
 
 import (
-	"github.com/yddeng/gsf/codec/pb"
-	"github.com/yddeng/gsf/protocol/cs/cspb"
+	"github.com/yddeng/clugs/codec/pb"
+	"github.com/yddeng/clugs/protocol/cs/cspb"
 )
 
 const (

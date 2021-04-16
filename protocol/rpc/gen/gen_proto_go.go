@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/yddeng/gsf/protocol/rpc/proto_def"
+	"github.com/yddeng/clugs/protocol/rpc/proto_def"
 	"io/ioutil"
 	"os"
 	"path"
@@ -10,7 +10,7 @@ import (
 )
 
 var message_template = `syntax = "proto3";
-option go_package = "gsf/protocol/rpc/rpcpb";
+option go_package = "clugs/protocol/rpc/rpcpb";
 
 message %sReq {}
 
@@ -42,8 +42,8 @@ func gen_proto(out_path string) {
 var register_template = `package rpc
 
 import (
-	"github.com/yddeng/gsf/codec/pb"
-	"github.com/yddeng/gsf/protocol/rpc/rpcpb"
+	"github.com/yddeng/clugs/codec/pb"
+	"github.com/yddeng/clugs/protocol/rpc/rpcpb"
 )
 
 const (

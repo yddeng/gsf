@@ -45,7 +45,7 @@ func (this *SpaceProtocol) Register(namespace string, msg proto.Message, id uint
 	}
 
 	if _, ok := sc.cmd2Name[id]; ok {
-		panic(fmt.Sprintf("id %d id areadly register", id))
+		panic(fmt.Sprintf("codec.pb:Register id %d id areadly register", id))
 	}
 
 	name := proto.MessageName(msg)
@@ -59,7 +59,7 @@ func (this *SpaceProtocol) Marshal(namespace string, o interface{}) (uint16, []b
 	var ns *Protocol
 	var ok bool
 	if ns, ok = this.protoMap[namespace]; !ok {
-		return 0, nil, fmt.Errorf("invaild namespace:%s", namespace)
+		return 0, nil, fmt.Errorf("codec.pb:Marshal invaild namespace:%s", namespace)
 	}
 	return ns.Marshal(o)
 }
@@ -68,7 +68,7 @@ func (this *SpaceProtocol) Unmarshal(namespace string, id uint16, buff []byte) (
 	var ns *Protocol
 	var ok bool
 	if ns, ok = this.protoMap[namespace]; !ok {
-		return nil, fmt.Errorf("invaild namespace:%s", namespace)
+		return nil, fmt.Errorf("codec.pb:Unmarshal invaild namespace:%s", namespace)
 	}
 
 	return ns.Unmarshal(id, buff)

@@ -63,7 +63,7 @@ func Launch(centerAddr string, localAddr *addr.Addr) {
 				if ne, ok := err.(net.Error); ok && ne.Temporary() {
 					continue
 				} else {
-					logger.Error("cluster::Launch error:", err)
+					logger.Error("Launch error:", err)
 					return
 				}
 			}

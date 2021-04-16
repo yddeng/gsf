@@ -1,8 +1,8 @@
 package rpc
 
 import (
-	"github.com/yddeng/gsf/codec/pb"
-	"github.com/yddeng/gsf/protocol/rpc/rpcpb"
+	"github.com/yddeng/clugs/codec/pb"
+	"github.com/yddeng/clugs/protocol/rpc/rpcpb"
 )
 
 const (

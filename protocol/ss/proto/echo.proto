@@ -1,5 +1,5 @@
 syntax = "proto3";
-option go_package = "gsf/protocol/ss/sspb";
+option go_package = "clugs/protocol/ss/sspb";
 
 message echo {
     string msg = 1;

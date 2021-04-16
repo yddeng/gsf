@@ -4,9 +4,10 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/yddeng/clugs/cluster/addr"
-	"github.com/yddeng/clugs/cluster/clusterpb"
 	"github.com/yddeng/clugs/codec/ss"
 	"github.com/yddeng/clugs/logger"
+	protorpc "github.com/yddeng/clugs/protocol/rpc"
+	protoss "github.com/yddeng/clugs/protocol/ss"
 	"github.com/yddeng/dnet"
 	"github.com/yddeng/dnet/drpc"
 	"github.com/yddeng/dutil/buffer"
@@ -87,7 +88,7 @@ func dial(end *endpoint) {
 
 		} else {
 			end.Unlock()
-			logger.Errorf("cluster:dial endpoint %s netAddr %s error:%s \n", end.logic.Logic.String(), end.logic.NetString(), err)
+			logger.Errorf("dial endpoint %s netAddr %s error:%s \n", end.logic.Logic.String(), end.logic.NetString(), err)
 			dialFailed(end, err)
 		}
 	}()
@@ -102,7 +103,7 @@ func dialFailed(end *endpoint, err error) {
 
 	now := time.Now()
 	if end.session == nil {
-		logger.Errorf("cluster:dialFailed error %s \n", err)
+		logger.Errorf("dialFailed error %s \n", err)
 		if isSame && now.Before(end.dialTimeout) {
 			time.Sleep(time.Millisecond * 100)
 			dial(end)
@@ -145,7 +146,7 @@ func acceptConn(conn *net.TCPConn) {
 	_, err := io.ReadFull(conn, buff)
 	if err != nil {
 		conn.Write(codeFailed)
-		logger.Errorf("cluster:acceptConn read error %s. ", err)
+		logger.Errorf("acceptConn read error %s. ", err)
 		return
 	}
 	conn.SetReadDeadline(time.Time{})
@@ -154,7 +155,7 @@ func acceptConn(conn *net.TCPConn) {
 	end := endGroup.getEndpoint(logic)
 	if end == nil {
 		conn.Write(codeFailed)
-		logger.Errorf("cluster:acceptConn logic %s is nil", logic.String())
+		logger.Errorf("acceptConn logic %s is nil", logic.String())
 		return
 	}
 
@@ -162,7 +163,7 @@ func acceptConn(conn *net.TCPConn) {
 	if end.logic.NetString() != netStr {
 		end.Unlock()
 		conn.Write(codeFailed)
-		logger.Errorf("cluster:acceptConn logic %s netAddr not equal %s != %s", logic.String(), end.logic.NetString(), netStr)
+		logger.Errorf("acceptConn logic %s netAddr not equal %s != %s", logic.String(), end.logic.NetString(), netStr)
 		return
 	}
 	end.Unlock()
@@ -176,16 +177,16 @@ func acceptConn(conn *net.TCPConn) {
 func connectOk(end *endpoint, conn dnet.NetConn) {
 	session := dnet.NewTCPSession(conn,
 		dnet.WithTimeout(heartbeatTime, 0),
-		dnet.WithCodec(ss.NewCodec(clusterpb.SS_SPACE, clusterpb.REQ_SPACE, clusterpb.RESP_SPACE)),
+		dnet.WithCodec(ss.NewCodec(protoss.SS_SPACE, protorpc.REQ_SPACE, protorpc.RESP_SPACE)),
 		dnet.WithCloseCallback(func(session dnet.Session, reason error) {
 			end.Lock()
 			defer end.Unlock()
 			end.session = nil
 			session.SetContext(nil)
-			logger.Infof("cluster:connectOK endpoint %s session closed, reason: %s\n", end.logic.Logic.String(), reason)
+			logger.Infof("connectOK endpoint %s session closed, reason: %s\n", end.logic.Logic.String(), reason)
 		}),
 		dnet.WithErrorCallback(func(session dnet.Session, err error) {
-			logger.Error("cluster:connectOK session error:", err)
+			logger.Error("connectOK session error:", err)
 			session.Close(err)
 		}),
 		dnet.WithMessageCallback(func(session dnet.Session, message interface{}) {
@@ -204,7 +205,7 @@ func connectOk(end *endpoint, conn dnet.NetConn) {
 					err = fmt.Errorf("invalid type:%s", reflect.TypeOf(message).String())
 				}
 				if err != nil {
-					logger.Errorf("cluster:connectOK dispatch error: %s. \n", err.Error())
+					logger.Errorf("connectOK dispatch error: %s. \n", err.Error())
 				}
 			})
 		}),
@@ -217,12 +218,12 @@ func connectOk(end *endpoint, conn dnet.NetConn) {
 	end.dialTimeout = time.Time{}
 
 	if end.session != nil {
-		logger.Infof("cluster:connectOK endpoint %s already connect", end.logic.Logic.String())
-		session.Close(fmt.Errorf("cluster:connectOK endpoint %s already connect", end.logic.Logic.String()))
+		logger.Infof("connectOK endpoint %s already connect", end.logic.Logic.String())
+		session.Close(fmt.Errorf("connectOK endpoint %s already connect", end.logic.Logic.String()))
 		return
 	}
 
-	logger.Infof("cluster:connectOK endpoint connection %s <-> %s", LocalAddr.Logic.String(), end.logic.Logic.String())
+	logger.Infof("connectOK endpoint connection %s <-> %s", LocalAddr.Logic.String(), end.logic.Logic.String())
 
 	end.session = session
 	session.SetContext(end)

@@ -114,7 +114,7 @@ func (decoder *Codec) unPack() (interface{}, error) {
 			return nil, err
 		}
 		msg = &drpc.Request{
-			SeqNo:  decoder.seqNo,
+			Seq:    decoder.seqNo,
 			Method: pb.GetNameById(decoder.req, decoder.cmd),
 			Data:   m,
 		}
@@ -124,12 +124,12 @@ func (decoder *Codec) unPack() (interface{}, error) {
 			return nil, err
 		}
 		msg = &drpc.Response{
-			SeqNo: decoder.seqNo,
-			Data:  m,
+			Seq:  decoder.seqNo,
+			Data: m,
 		}
 
 	default:
-		err = fmt.Errorf("unPack err: tt is %d", decoder.tt)
+		err = fmt.Errorf("codec.ss:unPack tt is %d", decoder.tt)
 	}
 
 	decoder.readHead = false
@@ -156,7 +156,7 @@ func (encoder *Codec) Encode(o interface{}) ([]byte, error) {
 	case *drpc.Request:
 		msg := o.(*drpc.Request)
 		tt = RPC_Request
-		seqNo = msg.SeqNo
+		seqNo = msg.Seq
 		cmd, data, err = pb.Marshal(encoder.req, msg.Data)
 		if err != nil {
 			return nil, err
@@ -165,19 +165,19 @@ func (encoder *Codec) Encode(o interface{}) ([]byte, error) {
 	case *drpc.Response:
 		msg := o.(*drpc.Response)
 		tt = RPC_Response
-		seqNo = msg.SeqNo
+		seqNo = msg.Seq
 		cmd, data, err = pb.Marshal(encoder.resp, msg.Data)
 		if err != nil {
 			return nil, err
 		}
 
 	default:
-		return nil, fmt.Errorf("invailed type:%s", reflect.TypeOf(o).String())
+		return nil, fmt.Errorf("codec.ss:Encode invailed type:%s", reflect.TypeOf(o).String())
 	}
 
 	bodyLen = len(data)
 	if bodyLen > buffSize {
-		return nil, fmt.Errorf("encode dataLen is too large,len: %d", bodyLen)
+		return nil, fmt.Errorf("codec.ss:Encode dataLen is too large,len: %d", bodyLen)
 	}
 
 	totalLen := headSize + bodyLen

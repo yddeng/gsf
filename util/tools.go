@@ -1,7 +1,7 @@
 package util
 
 import (
-	"github.com/yddeng/dutil/queue"
+	"github.com/yddeng/dutil/task"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -22,18 +22,18 @@ func LoopTask(t time.Duration, fun TimeTaskFunc) *time.Ticker {
 	return timeTicker
 }
 
-func WaitCondition(fn func() bool, eventq ...*queue.EventQueue) {
+func WaitCondition(fn func() bool, taskq ...*task.TaskQueue) {
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 
-	var eventQueue *queue.EventQueue
-	if len(eventq) > 0 {
-		eventQueue = eventq[0]
+	var taskQueue *task.TaskQueue
+	if len(taskq) > 0 {
+		taskQueue = taskq[0]
 	}
 
 	donefire := int32(0)
 
-	if nil == eventQueue {
+	if nil == taskQueue {
 		go func() {
 			for {
 				time.Sleep(time.Millisecond * 100)
@@ -51,7 +51,7 @@ func WaitCondition(fn func() bool, eventq ...*queue.EventQueue) {
 			stoped := int32(0)
 			for atomic.LoadInt32(&stoped) == 0 {
 				time.Sleep(time.Millisecond * 100)
-				eventQueue.Push(func() {
+				taskQueue.Push(func() {
 					if fn() {
 						if atomic.LoadInt32(&donefire) == 0 {
 							atomic.StoreInt32(&donefire, 1)

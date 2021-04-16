@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/yddeng/gsf/protocol/cs/proto_def"
+	"github.com/yddeng/clugs/protocol/cs/proto_def"
 	"io/ioutil"
 	"os"
 	"path"
@@ -10,7 +10,7 @@ import (
 )
 
 var message_template = `syntax = "proto3";
-option go_package = "gsf/protocol/cs/cspb";
+option go_package = "clugs/protocol/cs/cspb";
 
 message %sToS {}
 
@@ -41,8 +41,8 @@ func gen_proto(out_path string) {
 var register_template = `package cs
 
 import (
-	"github.com/yddeng/gsf/codec/pb"
-	"github.com/yddeng/gsf/protocol/cs/cspb"
+	"github.com/yddeng/clugs/codec/pb"
+	"github.com/yddeng/clugs/protocol/cs/cspb"
 )
 
 const (

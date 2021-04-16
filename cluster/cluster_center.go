@@ -14,8 +14,25 @@ import (
 	"reflect"
 )
 
+type centerMember struct {
+	logic   *addr.Addr
+	session dnet.Session
+}
+
+func (this *centerMember) SendMessage(req *ss.Message) error {
+	return this.session.Send(req)
+}
+
+func (this *centerMember) SendRequest(req *drpc.Request) error {
+	return this.session.Send(req)
+}
+
+func (this *centerMember) SendResponse(resp *drpc.Response) error {
+	return this.session.Send(resp)
+}
+
 type clusterCenter struct {
-	ends      map[addr.LogicAddr]*endpoint
+	members   map[addr.LogicAddr]*centerMember
 	handlers  map[uint16]func(dnet.Session, *ss.Message)
 	rpcServer *drpc.Server
 }
@@ -27,9 +44,9 @@ func (this *clusterCenter) broadcast(msg proto.Message, excepts ...addr.LogicAdd
 	if len(excepts) > 0 {
 		except = excepts[0]
 	}
-	for logic, end := range this.ends {
+	for logic, end := range this.members {
 		if logic != except {
-			end.send(ss.NewMessage(msg))
+			end.SendMessage(ss.NewMessage(msg))
 		}
 	}
 }
@@ -45,7 +62,7 @@ func (this *clusterCenter) dispatch(session dnet.Session, message interface{}) {
 			}
 
 		case *drpc.Request:
-			err = this.rpcServer.OnRPCRequest(&endpoint{session: session}, message.(*drpc.Request))
+			err = this.rpcServer.OnRPCRequest(&centerMember{session: session}, message.(*drpc.Request))
 
 		//case *drpc.Response:
 
@@ -53,7 +70,7 @@ func (this *clusterCenter) dispatch(session dnet.Session, message interface{}) {
 			err = fmt.Errorf("invalid type:%s", reflect.TypeOf(message).String())
 		}
 		if err != nil {
-			logger.Errorf("cluster.center:dispatch error: %s. \n", err.Error())
+			logger.Errorf("dispatch error: %s. \n", err.Error())
 		}
 	})
 }
@@ -66,29 +83,29 @@ func (this *clusterCenter) onLogin(replyer *drpc.Replier, arg interface{}) {
 
 	req := arg.(*clusterpb.LoginReq)
 	nodeInfo := req.GetNode()
-	session := replyer.Channel.(*endpoint).session
+	session := replyer.Channel.(*centerMember).session
 
 	resp := &clusterpb.LoginResp{}
-	logger.Infof("cluster.center:onLogin %v", req)
+	logger.Infof("onLogin %v", req)
 
 	logicAddr, err := addr.MakeAddr(addr.LogicAddr(nodeInfo.GetLogicAddr()).String(), nodeInfo.GetNetAddr())
 	if err != nil {
-		logger.Errorf("cluster.center:onLogin error :%s. ", err.Error())
+		logger.Errorf("onLogin error :%s. ", err.Error())
 		resp.Msg = err.Error()
 		_ = replyer.Reply(resp, nil)
 		session.Close(err)
 		return
 	}
 
-	end, ok := this.ends[logicAddr.Logic]
+	end, ok := this.members[logicAddr.Logic]
 	if !ok {
-		end = &endpoint{
+		end = &centerMember{
 			logic:   logicAddr,
 			session: session,
 		}
-		this.ends[logicAddr.Logic] = end
+		this.members[logicAddr.Logic] = end
 		session.SetContext(end)
-		logger.Infof("cluster.center:onLogin add endpoint [%s:%s] \n", logicAddr.Logic.String(), logicAddr.NetString())
+		logger.Infof("onLogin add endpoint [%s:%s] \n", logicAddr.Logic.String(), logicAddr.NetString())
 
 		resp.Ok = true
 		_ = replyer.Reply(resp, nil)
@@ -99,11 +116,11 @@ func (this *clusterCenter) onLogin(replyer *drpc.Replier, arg interface{}) {
 		if end.session != nil {
 			resp.Msg = fmt.Sprintf("logicAddr %s is already register,address %s. \n", end.logic.Logic.String(), end.logic.NetString())
 			_ = replyer.Reply(resp, nil)
-			logger.Infof("cluster.center:onLogin %s. \n", resp.GetMsg())
+			logger.Infof("onLogin %s. \n", resp.GetMsg())
 			session.Close(errors.New(resp.GetMsg()))
 			return
 		}
-		logger.Infof("cluster.center:onLogin reconnect endpoint %s, net address from %s to %s. \n", logicAddr.Logic.String(), end.logic.NetString(), logicAddr.NetString())
+		logger.Infof("onLogin reconnect endpoint %s, net address from %s to %s. \n", logicAddr.Logic.String(), end.logic.NetString(), logicAddr.NetString())
 
 		end.session = session
 		end.logic.Net = logicAddr.Net
@@ -123,29 +140,29 @@ func (this *clusterCenter) onLogin(replyer *drpc.Replier, arg interface{}) {
 	this.broadcast(enter, logicAddr.Logic)
 
 	notify := &clusterpb.NotifyNodeInfo{
-		Nodes: make([]*clusterpb.NodeInfo, 0, len(this.ends)),
+		Nodes: make([]*clusterpb.NodeInfo, 0, len(this.members)),
 	}
-	for _, e := range this.ends {
+	for _, e := range this.members {
 		notify.Nodes = append(notify.Nodes, &clusterpb.NodeInfo{
 			LogicAddr: e.logic.Logic.Uint32(),
 			NetAddr:   e.logic.NetString(),
 		})
 	}
 	// 通知自己，有哪些节点在线,包括自己
-	_ = end.send(ss.NewMessage(notify))
+	_ = end.SendMessage(ss.NewMessage(notify))
 
 }
 
 func (this *clusterCenter) onClose(session dnet.Session, err error) {
-	logger.Infof("cluster.center:onClose %s. \n", err.Error())
+	logger.Infof("onClose %s. \n", err.Error())
 	ctx := session.Context()
 	if ctx != nil {
-		end := ctx.(*endpoint)
+		end := ctx.(*centerMember)
 		end.session = nil
 		session.SetContext(nil)
 
-		logger.Infof("cluster.center:onClose endpoint %s onClose %s. \n", end.logic.Logic.String(), err.Error())
-		delete(this.ends, end.logic.Logic)
+		logger.Infof("onClose endpoint %s onClose %s. \n", end.logic.Logic.String(), err.Error())
+		delete(this.members, end.logic.Logic)
 
 		// 通知所有节点，节点离线
 		this.broadcast(&clusterpb.NodeLeave{
@@ -160,7 +177,7 @@ func (this *clusterCenter) Stop() {
 
 func LunchCenter(netAddr string) *clusterCenter {
 	center = &clusterCenter{
-		ends:      map[addr.LogicAddr]*endpoint{},
+		members:   map[addr.LogicAddr]*centerMember{},
 		handlers:  map[uint16]func(dnet.Session, *ss.Message){},
 		rpcServer: drpc.NewServer(),
 	}
@@ -169,25 +186,25 @@ func LunchCenter(netAddr string) *clusterCenter {
 	center.handlers[clusterpb.HeartbeatCmd] = center.onHeartbeat
 	center.rpcServer.Register(pb.GetNameById(clusterpb.REQ_SPACE, clusterpb.LoginReqCmd), center.onLogin)
 
-	logger.Infof("cluster.center:LunchCenter serveTCP %s. \n", netAddr)
+	logger.Infof("serveTCP %s. \n", netAddr)
 
 	go func() {
 		if err := dnet.ServeTCP(netAddr, dnet.HandleFunc(func(conn dnet.NetConn) {
-			logger.Infof("cluster.center:LunchCenter remote address %s. \n", conn.RemoteAddr().String())
+			logger.Infof("newConn remote address %s. \n", conn.RemoteAddr().String())
 
 			dnet.NewTCPSession(conn,
 				dnet.WithTimeout(heartbeatTime, 0),
 				dnet.WithCodec(ss.NewCodec(clusterpb.SS_SPACE, clusterpb.REQ_SPACE, clusterpb.RESP_SPACE)),
 				dnet.WithCloseCallback(center.onClose),
 				dnet.WithErrorCallback(func(session dnet.Session, err error) {
-					logger.Errorf("cluster.center:LunchCenter session error:%s. \n", err.Error())
+					logger.Errorf("errorCallback session error:%s. \n", err.Error())
 					session.Close(err)
 				}),
 				dnet.WithMessageCallback(center.dispatch),
 			)
 
 		})); err != nil {
-			panic("cluster.center:LunchCenter " + err.Error())
+			panic("serveTCP " + err.Error())
 		}
 	}()
 

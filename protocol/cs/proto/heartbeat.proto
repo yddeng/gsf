@@ -1,5 +1,5 @@
 syntax = "proto3";
-option go_package = "gsf/protocol/cs/cspb";
+option go_package = "clugs/protocol/cs/cspb";
 
 message heartbeatToS {}
 

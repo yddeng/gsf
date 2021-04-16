@@ -35,6 +35,7 @@ type call struct {
 
 func newEndpoint(logic *addr.Addr) *endpoint {
 	return &endpoint{
+		Mutex:       new(sync.Mutex),
 		logic:       logic,
 		dialTimeout: time.Time{},
 		ssMsg:       make([]*ss.Message, 0, 4),
