@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/yddeng/clugs/cluster/addr"
+	"github.com/yddeng/clugs/codec/ss"
+	"github.com/yddeng/clugs/logger"
 	"github.com/yddeng/dutil/task"
 	"net"
 	"sync"
@@ -16,43 +18,43 @@ var (
 	heartbeatTime = time.Second * 30 // 集群节点间超时时间间隔
 	rpcTimeout    = time.Second * 8  // rpc 请求超时时间间隔
 
-	LocalAddr *addr.Addr
-	clu *cluster = &cluster{
-		ssHandler:  map[uint16]func(from addr.LogicAddr, msg proto.Message),
-		Mutex: new(sync.Mutex),
+	endGroup = &endpointGroup{
+		logic2End: map[addr.LogicAddr]*endpoint{},
+		type2End:  map[uint32]*endpoint{},
+		Mutex:     new(sync.Mutex),
 	}
+
+	LocalAddr *addr.Addr
+	ssHandler = map[uint16]func(from addr.LogicAddr, msg proto.Message){}
+	clugs     *cluster
 )
 
 func init() {
 	taskQueue.Run()
 }
 
-
 type cluster struct {
-	ssHandler  map[uint16]func(from addr.LogicAddr, msg proto.Message)
-	endGroup *endpointGroup
+	tcpListener  *net.TCPListener
 	centerDialer *clusterCenterDialer
 	*sync.Mutex
 }
 
-func Launch(centerAddr string, localAddr *addr.Addr)  {
+func (this *cluster) Stop() {
+	this.tcpListener.Close()
+}
+
+func Launch(centerAddr string, localAddr *addr.Addr) {
 	l, err := net.ListenTCP("tcp", localAddr.Net)
 	if err != nil {
 		panic(err)
 	}
 
 	LocalAddr = localAddr
-	clu = &cluster{
-		endGroup: &endpointGroup{
-			logic2End: map[addr.LogicAddr]*endpoint{},
-			type2End:  map[uint32]*endpoint{},
-			Mutex:     new(sync.Mutex),
-		},
-		Mutex: nil,
+	clugs = &cluster{
+		tcpListener:  l,
+		centerDialer: dialCenter(centerAddr),
+		Mutex:        new(sync.Mutex),
 	}
-
-	clu.centerDialer = dialCenter(centerAddr, clu)
-
 
 	go func() {
 		for {
@@ -61,22 +63,22 @@ func Launch(centerAddr string, localAddr *addr.Addr)  {
 				if ne, ok := err.(net.Error); ok && ne.Temporary() {
 					continue
 				} else {
-					util.Logger().Errorln(err)
+					logger.Error("cluster::Launch error:", err)
 					return
 				}
 			}
 
 			// 新连接验证
-			go accept(conn)
+			go acceptConn(conn)
 		}
 	}()
 
 }
 
 func Post(logic addr.LogicAddr, msg proto.Message) error {
-	end := endpoints.getEndpointByLogic(logic)
+	end := endGroup.getEndpoint(logic)
 	if end == nil {
-		util.Logger().Errorf("%s is not found", logic.String())
+		logger.Errorf("%s is not found", logic.String())
 		return fmt.Errorf("%s is not found", logic.String())
 	}
 

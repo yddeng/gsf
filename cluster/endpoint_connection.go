@@ -3,15 +3,13 @@ package cluster
 import (
 	"encoding/binary"
 	"fmt"
+	"github.com/yddeng/clugs/cluster/addr"
+	"github.com/yddeng/clugs/cluster/clusterpb"
+	"github.com/yddeng/clugs/codec/ss"
+	"github.com/yddeng/clugs/logger"
 	"github.com/yddeng/dnet"
 	"github.com/yddeng/dnet/drpc"
-	"github.com/yddeng/dnet/dtcp"
 	"github.com/yddeng/dutil/buffer"
-	"github.com/yddeng/gsf/cluster/addr"
-	"github.com/yddeng/gsf/codec/ss"
-	protorpc "github.com/yddeng/gsf/protocol/rpc"
-	protoss "github.com/yddeng/gsf/protocol/ss"
-	"github.com/yddeng/gsf/util"
 	"io"
 	"net"
 	"reflect"
@@ -19,6 +17,8 @@ import (
 )
 
 // 节点间建立连接时，用于第一次消息编码
+// 将自己的逻辑地址打包
+// 4 + 2 + n, 逻辑地址、net地址长度、net地址
 func encode(logic addr.LogicAddr, netAddr string) []byte {
 	buff := buffer.NewBufferWithCap(64)
 	buff.WriteUint32BE(logic.Uint32())
@@ -31,6 +31,7 @@ func encode(logic addr.LogicAddr, netAddr string) []byte {
 }
 
 // 节点间建立连接时，用于第一次消息解码
+// 拆包逻辑地址
 func decode(data []byte) (logic addr.LogicAddr, netAddr string) {
 	buff := buffer.NewBuffer(data)
 	logicId, _ := buff.ReadUint32BE()
@@ -55,7 +56,7 @@ func dial(end *endpoint) {
 		end.Lock()
 		conn, err := net.DialTCP("tcp", nil, end.logic.Net)
 		if nil == err {
-			data := encode(selfPoint.logic.Logic, selfPoint.logic.NetString())
+			data := encode(LocalAddr.Logic, LocalAddr.NetString())
 			end.Unlock()
 
 			conn.SetWriteDeadline(time.Now().Add(heartbeatTime))
@@ -81,20 +82,19 @@ func dial(end *endpoint) {
 				dialFailed(end, fmt.Errorf("code = %d", code))
 				return
 			} else {
-				session := dtcp.NewTCPConn(conn)
-				connectOk(end, session)
+				connectOk(end, conn)
 			}
 
 		} else {
 			end.Unlock()
-			util.Logger().Errorf("dial endpoint %s netAddr %s error:%s \n", end.logic.Logic.String(), end.logic.NetString(), err)
+			logger.Errorf("cluster:dial endpoint %s netAddr %s error:%s \n", end.logic.Logic.String(), end.logic.NetString(), err)
 			dialFailed(end, err)
 		}
 	}()
 }
 
 func dialFailed(end *endpoint, err error) {
-	isSame := endpoints.getEndpointByLogic(end.logic.Logic) == end
+	isSame := endGroup.getEndpoint(end.logic.Logic) == end
 
 	end.Lock()
 	defer end.Unlock()
@@ -102,9 +102,9 @@ func dialFailed(end *endpoint, err error) {
 
 	now := time.Now()
 	if end.session == nil {
-		util.Logger().Errorf("connectFailed err %s \n", err)
+		logger.Errorf("cluster:dialFailed error %s \n", err)
 		if isSame && now.Before(end.dialTimeout) {
-			time.Sleep(time.Second)
+			time.Sleep(time.Millisecond * 100)
 			dial(end)
 			return
 		} else {
@@ -113,12 +113,12 @@ func dialFailed(end *endpoint, err error) {
 			end.reqMsg = end.reqMsg[0:0]
 			logicAddr := end.logic.Logic.String()
 
-			eventQueue.Push(func() {
+			taskQueue.Push(func() {
 				for _, req := range reqMsg {
 					_ = rpcMgr.rpcClient.OnRPCResponse(&drpc.Response{
-						SeqNo: req.SeqNo,
+						Seq:   req.Seq,
 						Data:  nil,
-						Err:   fmt.Errorf("connect logicAddr %s failed", logicAddr),
+						Error: fmt.Sprintf("connect logicAddr %s failed", logicAddr),
 					})
 				}
 			})
@@ -139,22 +139,22 @@ func init() {
 	binary.BigEndian.PutUint32(codeFailed, 0)
 }
 
-func accept(conn *net.TCPConn) {
+func acceptConn(conn *net.TCPConn) {
 	conn.SetReadDeadline(time.Now().Add(heartbeatTime))
 	buff := make([]byte, 64)
 	_, err := io.ReadFull(conn, buff)
 	if err != nil {
 		conn.Write(codeFailed)
-		util.Logger().Errorf("accept conn, read err %s", err)
+		logger.Errorf("cluster:acceptConn read error %s. ", err)
 		return
 	}
 	conn.SetReadDeadline(time.Time{})
 
 	logic, netStr := decode(buff)
-	end := endpoints.getEndpointByLogic(logic)
+	end := endGroup.getEndpoint(logic)
 	if end == nil {
 		conn.Write(codeFailed)
-		util.Logger().Errorf("accept conn, logic %s is nil", logic.String())
+		logger.Errorf("cluster:acceptConn logic %s is nil", logic.String())
 		return
 	}
 
@@ -162,7 +162,7 @@ func accept(conn *net.TCPConn) {
 	if end.logic.NetString() != netStr {
 		end.Unlock()
 		conn.Write(codeFailed)
-		util.Logger().Errorf("accept conn, logic %s netAddr not equal %s != %s", logic.String(), end.logic.NetString(), netStr)
+		logger.Errorf("cluster:acceptConn logic %s netAddr not equal %s != %s", logic.String(), end.logic.NetString(), netStr)
 		return
 	}
 	end.Unlock()
@@ -170,21 +170,45 @@ func accept(conn *net.TCPConn) {
 	conn.Write(codeOk)
 
 	// 连接成功
-	session := dtcp.NewTCPConn(conn)
-	connectOk(end, session)
+	connectOk(end, conn)
 }
 
-func connectOk(end *endpoint, session dnet.Session) {
-
-	session.SetTimeout(heartbeatTime, 0)
-	session.SetCodec(ss.NewCodec(protoss.SS_SPACE, protorpc.REQ_SPACE, protorpc.RESP_SPACE))
-	session.SetCloseCallBack(func(session dnet.Session, reason string) {
-		end.Lock()
-		defer end.Unlock()
-		end.session = nil
-		session.SetContext(nil)
-		util.Logger().Infof("endpoint %s session closed, reason: %s\n", end.logic.Logic.String(), reason)
-	})
+func connectOk(end *endpoint, conn dnet.NetConn) {
+	session := dnet.NewTCPSession(conn,
+		dnet.WithTimeout(heartbeatTime, 0),
+		dnet.WithCodec(ss.NewCodec(clusterpb.SS_SPACE, clusterpb.REQ_SPACE, clusterpb.RESP_SPACE)),
+		dnet.WithCloseCallback(func(session dnet.Session, reason error) {
+			end.Lock()
+			defer end.Unlock()
+			end.session = nil
+			session.SetContext(nil)
+			logger.Infof("cluster:connectOK endpoint %s session closed, reason: %s\n", end.logic.Logic.String(), reason)
+		}),
+		dnet.WithErrorCallback(func(session dnet.Session, err error) {
+			logger.Error("cluster:connectOK session error:", err)
+			session.Close(err)
+		}),
+		dnet.WithMessageCallback(func(session dnet.Session, message interface{}) {
+			taskQueue.Push(func() {
+				var err error
+				switch message.(type) {
+				case *ss.Message:
+					end.Lock()
+					err = dispatchSS(end.logic.Logic, message.(*ss.Message))
+					end.Unlock()
+				case *drpc.Request:
+					err = rpcMgr.rpcServer.OnRPCRequest(end, message.(*drpc.Request))
+				case *drpc.Response:
+					err = rpcMgr.rpcClient.OnRPCResponse(message.(*drpc.Response))
+				default:
+					err = fmt.Errorf("invalid type:%s", reflect.TypeOf(message).String())
+				}
+				if err != nil {
+					logger.Errorf("cluster:connectOK dispatch error: %s. \n", err.Error())
+				}
+			})
+		}),
+	)
 
 	end.Lock()
 	defer end.Unlock()
@@ -193,40 +217,15 @@ func connectOk(end *endpoint, session dnet.Session) {
 	end.dialTimeout = time.Time{}
 
 	if end.session != nil {
-		util.Logger().Infof("endpoint %s already connect", end.logic.Logic.String())
-		session.Close(fmt.Sprintf("endpoint %s already connect", end.logic.Logic.String()))
+		logger.Infof("cluster:connectOK endpoint %s already connect", end.logic.Logic.String())
+		session.Close(fmt.Errorf("cluster:connectOK endpoint %s already connect", end.logic.Logic.String()))
 		return
 	}
 
-	util.Logger().Infof("endpoint connect %s <-> %s", selfPoint.logic.Logic.String(), end.logic.Logic.String())
+	logger.Infof("cluster:connectOK endpoint connection %s <-> %s", LocalAddr.Logic.String(), end.logic.Logic.String())
 
 	end.session = session
 	session.SetContext(end)
-
-	session.Start(func(data interface{}, err error) {
-		if err != nil {
-			session.Close(err.Error())
-		} else {
-			eventQueue.Push(func() {
-				var err error
-				switch data.(type) {
-				case *ss.Message:
-					end.Lock()
-					err = dispatchSS(end.logic.Logic, data.(*ss.Message))
-					end.Unlock()
-				case *drpc.Request:
-					err = rpcMgr.rpcServer.OnRPCRequest(end, data.(*drpc.Request))
-				case *drpc.Response:
-					err = rpcMgr.rpcClient.OnRPCResponse(data.(*drpc.Response))
-				default:
-					err = fmt.Errorf("invalid type:%s", reflect.TypeOf(data).String())
-				}
-				if err != nil {
-					util.Logger().Errorf(err.Error())
-				}
-			})
-		}
-	})
 
 	// 将消息发送出去
 	for _, msg := range end.ssMsg {

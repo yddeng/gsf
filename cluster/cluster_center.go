@@ -75,7 +75,7 @@ func (this *clusterCenter) onLogin(replyer *drpc.Replier, arg interface{}) {
 	if err != nil {
 		logger.Errorf("cluster.center:onLogin error :%s. ", err.Error())
 		resp.Msg = err.Error()
-		_ = replyer.Reply(resp)
+		_ = replyer.Reply(resp, nil)
 		session.Close(err)
 		return
 	}
@@ -91,14 +91,14 @@ func (this *clusterCenter) onLogin(replyer *drpc.Replier, arg interface{}) {
 		logger.Infof("cluster.center:onLogin add endpoint [%s:%s] \n", logicAddr.Logic.String(), logicAddr.NetString())
 
 		resp.Ok = true
-		_ = replyer.Reply(resp)
+		_ = replyer.Reply(resp, nil)
 
 	} else {
 		// 已经有节点在该逻辑地址上启动。
 		// 可能出现情况：该逻辑地址已被占用，但新节点上线时原有节点网络闪断，导致这条请求合法。
 		if end.session != nil {
 			resp.Msg = fmt.Sprintf("logicAddr %s is already register,address %s. \n", end.logic.Logic.String(), end.logic.NetString())
-			_ = replyer.Reply(resp)
+			_ = replyer.Reply(resp, nil)
 			logger.Infof("cluster.center:onLogin %s. \n", resp.GetMsg())
 			session.Close(errors.New(resp.GetMsg()))
 			return
@@ -110,7 +110,7 @@ func (this *clusterCenter) onLogin(replyer *drpc.Replier, arg interface{}) {
 		session.SetContext(end)
 
 		resp.Ok = true
-		_ = replyer.Reply(resp)
+		_ = replyer.Reply(resp, nil)
 	}
 
 	enter := &clusterpb.NodeEnter{
@@ -165,6 +165,8 @@ func LunchCenter(netAddr string) *clusterCenter {
 		rpcServer: drpc.NewServer(),
 	}
 
+	// register handler
+	center.handlers[clusterpb.HeartbeatCmd] = center.onHeartbeat
 	center.rpcServer.Register(pb.GetNameById(clusterpb.REQ_SPACE, clusterpb.LoginReqCmd), center.onLogin)
 
 	logger.Infof("cluster.center:LunchCenter serveTCP %s. \n", netAddr)

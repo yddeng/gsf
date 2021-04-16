@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/yddeng/clugs/cluster/addr"
+	"github.com/yddeng/clugs/cluster/clusterpb"
+	"github.com/yddeng/clugs/codec/pb"
 	"github.com/yddeng/clugs/codec/ss"
+	"github.com/yddeng/clugs/logger"
 	"github.com/yddeng/dnet"
 	"github.com/yddeng/dnet/drpc"
 	"reflect"
@@ -20,7 +23,7 @@ type endpoint struct {
 
 	ssMsg  []*ss.Message
 	reqMsg []*drpc.Request
-	mtx    *sync.Mutex
+	*sync.Mutex
 }
 
 type call struct {
@@ -42,23 +45,23 @@ func newEndpoint(logic *addr.Addr) *endpoint {
 // 传入 *ss.Message, *drpc.Request, *drpc.Response
 func (this *endpoint) send(msg interface{}) error {
 	// 发送给自己的消息，直接处理
-	if this.logic.Logic == selfPoint.logic.Logic {
-		eventQueue.Push(func() {
+	if this.logic.Logic == LocalAddr.Logic {
+		taskQueue.Push(func() {
 			var err error
 			switch msg.(type) {
 			case *ss.Message:
 				req := msg.(*ss.Message)
-				req.SetCmd(pb.GetIdByName(protoss.SS_SPACE, proto.MessageName(req.GetData())))
-				err = dispatchSS(selfPoint.logic.Logic, msg.(*ss.Message))
+				req.SetCmd(pb.GetIdByName(clusterpb.SS_SPACE, proto.MessageName(req.GetData())))
+				err = dispatchSS(LocalAddr.Logic, msg.(*ss.Message))
 			case *drpc.Request:
-				err = rpcMgr.rpcServer.OnRPCRequest(selfPoint, msg.(*drpc.Request))
+				err = rpcMgr.rpcServer.OnRPCRequest(this, msg.(*drpc.Request))
 			case *drpc.Response:
 				err = rpcMgr.rpcClient.OnRPCResponse(msg.(*drpc.Response))
 			default:
 				err = fmt.Errorf("invalid type:%s", reflect.TypeOf(msg).String())
 			}
 			if err != nil {
-				util.Logger().Errorf(err.Error())
+				logger.Errorf(err.Error())
 			}
 		})
 		return nil
@@ -72,7 +75,7 @@ func (this *endpoint) send(msg interface{}) error {
 		case *drpc.Request:
 			this.reqMsg = append(this.reqMsg, msg.(*drpc.Request))
 		default:
-			util.Logger().Debugf("pending invalid type:%s", reflect.TypeOf(msg).String())
+			logger.Debugf("pending invalid type:%s", reflect.TypeOf(msg).String())
 		}
 		dial(this)
 		return nil //fmt.Errorf("%s session is nil", this.logic.Logic.String())
@@ -94,7 +97,7 @@ type endpointGroup struct {
 	*sync.Mutex
 }
 
-func (this *endpointGroup) rangeEach(f func(end *endpoint) bool) {
+func (this *endpointGroup) each(f func(end *endpoint) bool) {
 	this.Lock()
 	defer this.Unlock()
 	for _, end := range this.logic2End {
@@ -113,7 +116,7 @@ func (this *endpointGroup) addEndpoint(logic *addr.Addr) {
 	}
 }
 
-func (this *endpointGroup) removeEndpoint(logic addr.LogicAddr) {
+func (this *endpointGroup) delEndpoint(logic addr.LogicAddr) {
 	this.Lock()
 	defer this.Unlock()
 
@@ -123,7 +126,7 @@ func (this *endpointGroup) removeEndpoint(logic addr.LogicAddr) {
 	}
 }
 
-func (this *endpointGroup) getEndpointByLogic(logic addr.LogicAddr) *endpoint {
+func (this *endpointGroup) getEndpoint(logic addr.LogicAddr) *endpoint {
 	this.Lock()
 	defer this.Unlock()
 

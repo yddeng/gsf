@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/yddeng/clugs/cluster/addr"
-	"github.com/yddeng/clugs/util/logger"
+	"github.com/yddeng/clugs/logger"
 	"github.com/yddeng/dnet/drpc"
 )
 
@@ -39,7 +39,7 @@ func (this *RPCChannel) SendResponse(resp *drpc.Response) error {
 */
 
 func RPCGo(logic addr.LogicAddr, data proto.Message, callback func(interface{}, error)) error {
-	end := endpoints.getEndpointByLogic(logic)
+	end := endGroup.getEndpoint(logic)
 	if end == nil {
 		logger.Errorf("%s is not found", logic.String())
 		return fmt.Errorf("%s is not found", logic.String())
