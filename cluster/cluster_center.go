@@ -189,7 +189,7 @@ func LunchCenter(netAddr string) *clusterCenter {
 	logger.Infof("serveTCP %s. \n", netAddr)
 
 	go func() {
-		if err := dnet.ServeTCP(netAddr, dnet.HandleFunc(func(conn dnet.NetConn) {
+		if err := dnet.ServeTCPFunc(netAddr, func(conn dnet.NetConn) {
 			logger.Infof("newConn remote address %s. \n", conn.RemoteAddr().String())
 
 			dnet.NewTCPSession(conn,
@@ -203,7 +203,7 @@ func LunchCenter(netAddr string) *clusterCenter {
 				dnet.WithMessageCallback(center.dispatch),
 			)
 
-		})); err != nil {
+		}); err != nil {
 			panic("serveTCP " + err.Error())
 		}
 	}()

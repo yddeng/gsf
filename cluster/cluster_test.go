@@ -30,24 +30,24 @@ func launch(centerAddr, logicAddr, localNetAddr string) {
 	Launch(centerAddr, logic)
 }
 
-func TestGo1(t *testing.T) {
+func TestCall(t *testing.T) {
 	launch("127.0.0.1:9874", "1.1.1", "127.0.0.1:6547")
 	// 自调用
 	time.Sleep(time.Second)
 	logic, _ := addr.MakeLogicAddr("1.1.1")
-	RPCGo(logic, &rpcpb.EchoReq{Msg: "I'm 1.1.1"}, func(i interface{}, e error) {
+	AsyncCall(logic, &rpcpb.EchoReq{Msg: "I'm 1.1.1"}, func(i interface{}, e error) {
 		fmt.Println(i, e)
 	})
 
 	time.Sleep(time.Second * 20)
 }
 
-func TestGo2(t *testing.T) {
+func TestCall2(t *testing.T) {
 	launch("127.0.0.1:9874", "1.1.2", "127.0.0.1:6548")
 	//
 	time.Sleep(time.Second)
 	logic, _ := addr.MakeLogicAddr("1.1.1")
-	RPCGo(logic, &rpcpb.EchoReq{Msg: "I'm 1.1.2"}, func(i interface{}, e error) {
+	AsyncCall(logic, &rpcpb.EchoReq{Msg: "I'm 1.1.2"}, func(i interface{}, e error) {
 		fmt.Println(i, e)
 	})
 	time.Sleep(time.Second * 20)

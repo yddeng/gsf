@@ -38,7 +38,7 @@ func (this *RPCChannel) SendResponse(resp *drpc.Response) error {
 }
 */
 
-func RPCGo(logic addr.LogicAddr, data proto.Message, callback func(interface{}, error)) error {
+func AsyncCall(logic addr.LogicAddr, data proto.Message, callback func(interface{}, error)) error {
 	end := endGroup.getEndpoint(logic)
 	if end == nil {
 		logger.Errorf("%s is not found", logic.String())
@@ -47,7 +47,7 @@ func RPCGo(logic addr.LogicAddr, data proto.Message, callback func(interface{}, 
 
 	end.Lock()
 	defer end.Unlock()
-	return rpcMgr.rpcClient.Go(end, proto.MessageName(data), data, rpcTimeout, callback)
+	return rpcMgr.rpcClient.Go(end, proto.MessageName(data), data, drpc.DefaultRPCTimeout, callback)
 }
 
 func RegisterRPCMethod(name string, h drpc.MethodHandler) {

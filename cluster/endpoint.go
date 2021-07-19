@@ -53,7 +53,7 @@ func (this *endpoint) send(msg interface{}) error {
 			case *ss.Message:
 				req := msg.(*ss.Message)
 				req.SetCmd(pb.GetIdByName(clusterpb.SS_SPACE, proto.MessageName(req.GetData())))
-				err = dispatchSS(LocalAddr.Logic, msg.(*ss.Message))
+				err = dispatchSS(LocalAddr.Logic, req)
 			case *drpc.Request:
 				err = rpcMgr.rpcServer.OnRPCRequest(this, msg.(*drpc.Request))
 			case *drpc.Response:

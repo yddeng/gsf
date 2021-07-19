@@ -5,7 +5,7 @@ import (
 	"reflect"
 )
 
-type Interface interface {
+type Serializer interface {
 	//反序列化
 	Unmarshal(data []byte, o interface{}) (err error)
 	//序列化
@@ -15,14 +15,14 @@ type Interface interface {
 type Protocol struct {
 	id2Type map[uint16]reflect.Type
 	type2Id map[reflect.Type]uint16
-	protoc  Interface
+	serial  Serializer
 }
 
-func NewProtocol(protoc Interface) *Protocol {
+func NewProtocol(serial Serializer) *Protocol {
 	return &Protocol{
 		id2Type: map[uint16]reflect.Type{},
 		type2Id: map[reflect.Type]uint16{},
-		protoc:  protoc,
+		serial:  serial,
 	}
 }
 
@@ -43,7 +43,7 @@ func (this *Protocol) Marshal(data interface{}) (uint16, []byte, error) {
 		return 0, nil, fmt.Errorf("codec.pb:Marshal type: %s undefined", reflect.TypeOf(data))
 	}
 
-	ret, err := this.protoc.Marshal(data)
+	ret, err := this.serial.Marshal(data)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -60,7 +60,7 @@ func (this *Protocol) Unmarshal(msgID uint16, data []byte) (msg interface{}, err
 
 	//反序列化的结构
 	msg = reflect.New(tt.Elem()).Interface()
-	err = this.protoc.Unmarshal(data, msg)
+	err = this.serial.Unmarshal(data, msg)
 	if err != nil {
 		return nil, err
 	}
